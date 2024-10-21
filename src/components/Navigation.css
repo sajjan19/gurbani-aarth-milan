@@ -1,0 +1,40 @@
+.nav-menu ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 50px;
+  }
+  
+  .nav-link {
+    text-decoration: none;
+    color: black;
+    font-weight: 500;
+    transition: color 0.3s ease, transform 0.3s ease;  /* Smooth transition for color and scaling */
+
+  }
+
+  .nav-link.active {
+    font-weight: 700; /* Bold for the active link */
+    color: blue; /* Ensure the color remains consistent for active links */
+  }
+
+  .nav-link:hover {
+    transform: scale(1.09);  /* Slightly enlarge the navigation link on hover */
+    color: blue;
+  }
+  
+/* Mobile Responsive Style */
+@media (max-width: 600px) {
+    .nav-menu ul {
+      gap: 30px;
+      margin-top: 10px;
+      margin-bottom: 15px;
+
+    }
+
+    .nav-link {
+        font-size: 0.9rem;
+    }
+  }
+  

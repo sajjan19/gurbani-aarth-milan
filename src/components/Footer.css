@@ -1,0 +1,19 @@
+/* Footer Styles */
+.footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-top: 1px solid #ddd;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  font-size: 1rem;
+}
+
+/* Mobile Responsive Style */
+@media (max-width: 600px) {
+  .footer {
+    padding: 15px;
+    font-size: 0.9rem; /* Reduce font size for better fit on mobile */
+  }
+}

@@ -1,0 +1,59 @@
+.search-bar {
+    display: flex;
+    flex-direction: column; /* Stack the input and button vertically */
+    align-items: stretch; /* Make elements stretch to the container width */
+    gap: 10px;
+    margin: 20px auto; /* Center the search bar by using auto margin */
+    width: 100%; /* Make search bar take full container width */
+    max-width: 600px; /* Limit the width on larger screens */
+    box-sizing: border-box;
+  }
+  
+  .search-bar input {
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%; /* Ensure input takes full width */
+    box-sizing: border-box; /* Include padding and border in element's width */
+  }
+  button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    align-self: center;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  .error-message {
+    color: red;
+    margin-top: 10px;
+    font-size: 0.9rem;
+  }
+  
+  
+  /* Mobile Responsive Style */
+  @media (max-width: 600px) {
+    .search-bar {
+      gap: 5px; /* Reduce gap for better spacing on mobile */
+    }
+
+    button {
+        padding: 10px 15px;
+        font-size: 1rem; /* Adjust button font size for mobile */
+        width: 100%; /* Make the button full-width on mobile */
+      }
+  
+    .search-bar input,
+    .search-bar button {
+      font-size: 1rem; /* Ensure font size is easily readable */
+    }
+  }
+  
