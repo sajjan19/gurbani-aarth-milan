@@ -11,8 +11,15 @@ const DB_PATH = path.join(PROJECT_ROOT, "data", "gurbani.db");
 const SCHEMA_PATH = path.join(PROJECT_ROOT, "data", "schema.sql");
 
 // Column order matches the spreadsheet headers exactly.
+// The "shabdarath" key below is written with explicit \uXXXX escapes for
+// the initial ਸ਼ (SHA): the source spreadsheet uses the precomposed
+// codepoint U+0A36, and it's easy for an editor/terminal to silently
+// normalize a literal ਸ਼ into the decomposed ਸ (U+0A38) + ਼ (U+0A3C)
+// instead, which looks identical but fails to match and silently drops
+// every translation from this researcher.
+const SHABDARATH = "\u0A36\u0A2C\u0A26\u0A3E\u0A30\u0A25";
 const RESEARCHERS: { key: string; displayName: string; language: "pa" | "en" }[] = [
-  { key: "ਸ਼ਬਦਾਰਥ", displayName: "ਸ਼ਬਦਾਰਥ", language: "pa" },
+  { key: SHABDARATH, displayName: SHABDARATH, language: "pa" },
   { key: "ਫਰੀਦਕੋਟੀ", displayName: "ਫਰੀਦਕੋਟੀ", language: "pa" },
   { key: "ਸੰਥਯਾ", displayName: "ਸੰਥਯਾ", language: "pa" },
   { key: "ਸਟੀਕ", displayName: "ਸਟੀਕ", language: "pa" },
@@ -20,13 +27,13 @@ const RESEARCHERS: { key: string; displayName: string; language: "pa" | "en" }[]
   { key: "ਨਿਰਣੈ", displayName: "ਨਿਰਣੈ", language: "pa" },
   { key: "ਸਿਧਾਂਤਕ", displayName: "ਸਿਧਾਂਤਕ", language: "pa" },
   { key: "ਅਰਥ ਬੋਧ", displayName: "ਅਰਥ ਬੋਧ", language: "pa" },
-  { key: "Gopal S", displayName: "Gopal Singh", language: "en" },
-  { key: "Manmahoan S", displayName: "Manmohan Singh", language: "en" },
-  { key: "Talib", displayName: "Gurbachan Singh Talib", language: "en" },
-  { key: "Khalsa", displayName: "Sant Singh Khalsa", language: "en" },
-  { key: "Darshan S", displayName: "Darshan Singh", language: "en" },
+  { key: "Gopal S", displayName: "Gopal S", language: "en" },
+  { key: "Manmahoan S", displayName: "Manmahoan S", language: "en" },
+  { key: "Talib", displayName: "Talib", language: "en" },
+  { key: "Khalsa", displayName: "Khalsa", language: "en" },
+  { key: "Darshan S", displayName: "Darshan S", language: "en" },
   { key: "Santhia Pothian", displayName: "Santhia Pothian", language: "en" },
-  { key: "Kartar S", displayName: "Kartar Singh", language: "en" },
+  { key: "Kartar S", displayName: "Kartar S", language: "en" },
 ];
 
 function computeInitials(phrase: string): string[] {

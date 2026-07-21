@@ -1,119 +1,86 @@
-// Phonetic Latin-to-Gurmukhi transliteration, e.g. typing "satnam" produces "ਸਤਨਾਮ".
-// One shared table drives both the live transliteration engine and the
-// roman-letter captions shown on the virtual Gurmukhi keyboard.
-
-type VowelEntry = { roman: string; independent: string; matra: string };
-
-// Longest roman sequence first within each group so matching is greedy.
-const VOWELS: VowelEntry[] = [
-  { roman: "aa", independent: "ਆ", matra: "ਾ" },
-  { roman: "ai", independent: "ਐ", matra: "ੈ" },
-  { roman: "au", independent: "ਔ", matra: "ੌ" },
-  { roman: "ee", independent: "ਈ", matra: "ੀ" },
-  { roman: "oo", independent: "ਊ", matra: "ੂ" },
-  { roman: "a", independent: "ਅ", matra: "" },
-  { roman: "i", independent: "ਇ", matra: "ਿ" },
-  { roman: "u", independent: "ਉ", matra: "ੁ" },
-  { roman: "e", independent: "ਏ", matra: "ੇ" },
-  { roman: "o", independent: "ਓ", matra: "ੋ" },
-];
-
-const CONSONANTS: { roman: string; gurmukhi: string }[] = [
-  { roman: "kh", gurmukhi: "ਖ" },
-  { roman: "gh", gurmukhi: "ਘ" },
-  { roman: "ng", gurmukhi: "ਙ" },
-  { roman: "chh", gurmukhi: "ਛ" },
-  { roman: "ch", gurmukhi: "ਚ" },
-  { roman: "jh", gurmukhi: "ਝ" },
-  { roman: "ny", gurmukhi: "ਞ" },
-  { roman: "Th", gurmukhi: "ਠ" },
-  { roman: "Dh", gurmukhi: "ਢ" },
-  { roman: "th", gurmukhi: "ਥ" },
-  { roman: "dh", gurmukhi: "ਧ" },
-  { roman: "ph", gurmukhi: "ਫ" },
-  { roman: "bh", gurmukhi: "ਭ" },
-  { roman: "sh", gurmukhi: "ਸ਼" },
-  { roman: "T", gurmukhi: "ਟ" },
-  { roman: "D", gurmukhi: "ਡ" },
-  { roman: "N", gurmukhi: "ਣ" },
-  { roman: "L", gurmukhi: "ੜ" },
-  { roman: "K", gurmukhi: "ਖ਼" },
-  { roman: "G", gurmukhi: "ਗ਼" },
+// Strict 1:1 Latin-to-Gurmukhi key mapping: every mapped roman letter
+// (case-sensitive) produces exactly one Gurmukhi character, and every
+// Gurmukhi character has exactly one roman trigger. No digraphs (no "kh",
+// no "aa") -- this is a direct remapped keyboard layout, not a phonetic
+// guesser. Unmapped keys (digits, punctuation, space) pass through as-is,
+// which keeps page-number search typing plain numbers.
+//
+// The four rarest characters (ੳ, ੲ, ਃ, ੍) are left unmapped -- with only
+// 52 case-sensitive Latin letters and 52 characters wanting a slot, these
+// were the ones cut; they're still reachable via the virtual keyboard.
+const ENTRIES: { roman: string; gurmukhi: string }[] = [
+  // Consonants
+  { roman: "a", gurmukhi: "ਅ" },
+  { roman: "s", gurmukhi: "ਸ" },
+  { roman: "h", gurmukhi: "ਹ" },
   { roman: "k", gurmukhi: "ਕ" },
+  { roman: "K", gurmukhi: "ਖ" },
   { roman: "g", gurmukhi: "ਗ" },
+  { roman: "G", gurmukhi: "ਘ" },
+  { roman: "Z", gurmukhi: "ਙ" },
   { roman: "c", gurmukhi: "ਚ" },
+  { roman: "C", gurmukhi: "ਛ" },
   { roman: "j", gurmukhi: "ਜ" },
+  { roman: "J", gurmukhi: "ਝ" },
+  { roman: "Y", gurmukhi: "ਞ" },
+  { roman: "w", gurmukhi: "ਟ" },
+  { roman: "W", gurmukhi: "ਠ" },
+  { roman: "q", gurmukhi: "ਡ" },
+  { roman: "Q", gurmukhi: "ਢ" },
+  { roman: "x", gurmukhi: "ਣ" },
   { roman: "t", gurmukhi: "ਤ" },
+  { roman: "T", gurmukhi: "ਥ" },
   { roman: "d", gurmukhi: "ਦ" },
+  { roman: "D", gurmukhi: "ਧ" },
   { roman: "n", gurmukhi: "ਨ" },
   { roman: "p", gurmukhi: "ਪ" },
+  { roman: "P", gurmukhi: "ਫ" },
   { roman: "b", gurmukhi: "ਬ" },
+  { roman: "B", gurmukhi: "ਭ" },
   { roman: "m", gurmukhi: "ਮ" },
   { roman: "y", gurmukhi: "ਯ" },
   { roman: "r", gurmukhi: "ਰ" },
   { roman: "l", gurmukhi: "ਲ" },
   { roman: "v", gurmukhi: "ਵ" },
-  { roman: "w", gurmukhi: "ਵ" },
-  { roman: "s", gurmukhi: "ਸ" },
-  { roman: "h", gurmukhi: "ਹ" },
-  { roman: "f", gurmukhi: "ਫ਼" },
+  { roman: "R", gurmukhi: "ੜ" },
+  { roman: "L", gurmukhi: "ਲ਼" },
+  { roman: "S", gurmukhi: "ਸ਼" },
+  { roman: "X", gurmukhi: "ਖ਼" },
+  { roman: "A", gurmukhi: "ਗ਼" },
   { roman: "z", gurmukhi: "ਜ਼" },
+  { roman: "f", gurmukhi: "ਫ਼" },
+  // Vowel signs / diacritics
+  { roman: "H", gurmukhi: "ਾ" },
+  { roman: "i", gurmukhi: "ਿ" },
+  { roman: "I", gurmukhi: "ੀ" },
+  { roman: "u", gurmukhi: "ੁ" },
+  { roman: "U", gurmukhi: "ੂ" },
+  { roman: "e", gurmukhi: "ੇ" },
+  { roman: "E", gurmukhi: "ੈ" },
+  { roman: "o", gurmukhi: "ੋ" },
+  { roman: "O", gurmukhi: "ੌ" },
+  { roman: "N", gurmukhi: "ਂ" },
+  { roman: "M", gurmukhi: "ੰ" },
+  { roman: "F", gurmukhi: "ੱ" },
+  { roman: "V", gurmukhi: "਼" },
 ];
 
-const vowelsByLength = [...VOWELS].sort((a, b) => b.roman.length - a.roman.length);
-const consonantsByLength = [...CONSONANTS].sort((a, b) => b.roman.length - a.roman.length);
-
-export function transliterateRoman(input: string): string {
-  let result = "";
-  let i = 0;
-  let afterConsonant = false;
-
-  while (i < input.length) {
-    const ch = input[i];
-
-    if (!/[A-Za-z]/.test(ch)) {
-      result += ch;
-      afterConsonant = false;
-      i += 1;
-      continue;
-    }
-
-    const vowel = vowelsByLength.find((v) => input.startsWith(v.roman, i));
-    if (vowel) {
-      result += afterConsonant ? vowel.matra : vowel.independent;
-      afterConsonant = false;
-      i += vowel.roman.length;
-      continue;
-    }
-
-    const consonant = consonantsByLength.find((c) => input.startsWith(c.roman, i));
-    if (consonant) {
-      result += consonant.gurmukhi;
-      afterConsonant = true;
-      i += consonant.roman.length;
-      continue;
-    }
-
-    result += ch;
-    afterConsonant = false;
-    i += 1;
-  }
-
-  return result;
+const ROMAN_TO_GURMUKHI: Record<string, string> = {};
+const GURMUKHI_TO_ROMAN: Record<string, string> = {};
+for (const { roman, gurmukhi } of ENTRIES) {
+  ROMAN_TO_GURMUKHI[roman] = gurmukhi;
+  GURMUKHI_TO_ROMAN[gurmukhi] = roman;
 }
 
-// For the virtual keyboard: which roman letter(s) produce a given Gurmukhi
-// character. Independent vowels and matras both show their vowel's roman
-// letter (context decides which form typing actually produces).
-const ROMAN_LABELS: Record<string, string> = {};
-for (const v of VOWELS) {
-  if (!(v.independent in ROMAN_LABELS)) ROMAN_LABELS[v.independent] = v.roman;
-  if (v.matra && !(v.matra in ROMAN_LABELS)) ROMAN_LABELS[v.matra] = v.roman;
-}
-for (const c of CONSONANTS) {
-  if (!(c.gurmukhi in ROMAN_LABELS)) ROMAN_LABELS[c.gurmukhi] = c.roman;
+// Looks up a single typed character; returns the Gurmukhi character it
+// produces, or undefined if this key isn't mapped (caller should let it
+// pass through untouched, e.g. digits for page-number search).
+export function gurmukhiForRoman(char: string): string | undefined {
+  return ROMAN_TO_GURMUKHI[char];
 }
 
+// For the virtual keyboard: which roman letter produces a given Gurmukhi
+// character (the exact inverse of gurmukhiForRoman, since the map is 1:1).
 export function romanLabelFor(gurmukhiChar: string): string | undefined {
-  return ROMAN_LABELS[gurmukhiChar];
+  return GURMUKHI_TO_ROMAN[gurmukhiChar];
 }

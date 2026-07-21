@@ -5,13 +5,16 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode");
   const q = searchParams.get("q")?.trim() ?? "";
+  // Distinguish "param not sent" (null = no filter, show every researcher)
+  // from "param sent but empty" (= filter to zero researchers).
   const researchersParam = searchParams.get("researchers");
-  const researcherIds = researchersParam
-    ? researchersParam
-        .split(",")
-        .map((s) => parseInt(s, 10))
-        .filter((n) => Number.isFinite(n))
-    : null;
+  const researcherIds =
+    researchersParam === null
+      ? null
+      : researchersParam
+          .split(",")
+          .map((s) => parseInt(s, 10))
+          .filter((n) => Number.isFinite(n));
 
   if (!q) {
     return NextResponse.json({ results: [] });

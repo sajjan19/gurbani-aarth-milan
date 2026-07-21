@@ -55,7 +55,11 @@ function attachTranslations(
   `;
   const params: unknown[] = [...verseIds];
 
-  if (researcherIds && researcherIds.length > 0) {
+  if (researcherIds !== null) {
+    if (researcherIds.length === 0) {
+      // Explicitly filtered down to zero researchers: no translations match.
+      return verses.map((v) => ({ ...v, translations: [] }));
+    }
     sql += ` AND t.researcher_id IN (${researcherIds.map(() => "?").join(",")})`;
     params.push(...researcherIds);
   }

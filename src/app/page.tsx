@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { romanLabelFor, transliterateRoman } from "@/lib/transliterate";
+import { gurmukhiForRoman, romanLabelFor } from "@/lib/transliterate";
 
 type Researcher = {
   id: number;
@@ -84,15 +84,6 @@ export default function Home() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Tracks live roman-to-Gurmukhi transliteration while typing on a Latin
-  // keyboard: romanBuffer is the raw letters typed in the current unbroken
-  // typing streak, queryBase is what `query` held right before that streak
-  // began. query is always romanBase + transliterate(romanBuffer) while a
-  // streak is active. Any non-typing change to query (virtual keyboard,
-  // paste, clear) resets both, so the next streak starts from scratch.
-  const romanBufferRef = useRef("");
-  const queryBaseRef = useRef("");
-
   useEffect(() => {
     fetch("/api/researchers")
       .then((res) => res.json())
@@ -131,11 +122,6 @@ export default function Home() {
     });
   }
 
-  function resetRomanStreak(newQuery: string) {
-    romanBufferRef.current = "";
-    queryBaseRef.current = newQuery;
-  }
-
   // Reads/writes `query` via closure rather than a functional setState update:
   // each call corresponds to one real click event, so `query` is always fresh
   // by the time the handler runs. A functional update here would be re-invoked
@@ -146,9 +132,7 @@ export default function Home() {
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start + char.length;
-    const next = query.slice(0, start) + char + query.slice(end);
-    setQuery(next);
-    resetRomanStreak(next);
+    setQuery(query.slice(0, start) + char + query.slice(end));
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -160,42 +144,29 @@ export default function Home() {
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start === end ? Math.max(0, start - 1) : start;
-    const next =
+    setQuery(
       start === end
         ? query.slice(0, Math.max(0, start - 1)) + query.slice(end)
-        : query.slice(0, start) + query.slice(end);
-    setQuery(next);
-    resetRomanStreak(next);
+        : query.slice(0, start) + query.slice(end)
+    );
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
     });
   }
 
-  // Intercepts plain letter/digit/space/backspace keys to transliterate as
-  // the user types (e.g. "satnam" -> "ਸਤਨਾਮ"), while leaving shortcuts
-  // (Ctrl/Cmd combos), arrow keys, paste, etc. to behave normally. Native
-  // Gurmukhi keyboard input still works too: transliterateRoman() passes
-  // through any character it doesn't recognize as a roman letter unchanged.
+  // Each mapped roman key produces exactly one Gurmukhi character (see
+  // src/lib/transliterate.ts), so a keystroke is just "look up, then insert
+  // at the cursor" -- reusing insertAtCursor means selection-replace,
+  // mid-string editing, etc. all work the same as clicking the virtual
+  // keyboard. Unmapped keys (digits, punctuation, native Gurmukhi input)
+  // are left alone so they behave normally.
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-    if (e.key === "Backspace") {
-      if (romanBufferRef.current.length > 0) {
-        e.preventDefault();
-        romanBufferRef.current = romanBufferRef.current.slice(0, -1);
-        setQuery(queryBaseRef.current + transliterateRoman(romanBufferRef.current));
-      } else {
-        backspaceAtCursor();
-      }
-      return;
-    }
-
-    if (e.key.length === 1) {
+    const mapped = gurmukhiForRoman(e.key);
+    if (mapped) {
       e.preventDefault();
-      if (romanBufferRef.current === "") queryBaseRef.current = query;
-      romanBufferRef.current += e.key;
-      setQuery(queryBaseRef.current + transliterateRoman(romanBufferRef.current));
+      insertAtCursor(mapped);
     }
   }
 
@@ -209,11 +180,10 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        mode,
-        q: query.trim(),
-        researchers: Array.from(selectedIds).join(","),
-      });
+      // Fetch every researcher's translation for the matched verses; which
+      // ones are shown is then a pure client-side filter (see the render
+      // below), so toggling a checkbox updates instantly with no refetch.
+      const params = new URLSearchParams({ mode, q: query.trim() });
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
       if (!res.ok) {
@@ -254,10 +224,7 @@ export default function Home() {
           ref={searchInputRef}
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            resetRomanStreak(e.target.value);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleSearchKeyDown}
           placeholder={MODE_PLACEHOLDERS[mode]}
           className="search-input"
@@ -282,14 +249,7 @@ export default function Home() {
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
               ⌫ Backspace
             </button>
-            <button
-              type="button"
-              className="keyboard-key special"
-              onClick={() => {
-                setQuery("");
-                resetRomanStreak("");
-              }}
-            >
+            <button type="button" className="keyboard-key special" onClick={() => setQuery("")}>
               Clear
             </button>
           </div>
@@ -370,25 +330,28 @@ export default function Home() {
 
       <div className="results">
         {results !== null && results.length === 0 && !loading && <p>No matches found.</p>}
-        {results?.map((v) => (
-          <article key={v.id} className="verse-card">
-            <div className="verse-meta">
-              Page {v.page}, Verse {v.verse}
-            </div>
-            <p className="verse-phrase">{v.phrase}</p>
-            {v.translations.length === 0 ? (
-              <p className="no-translations">No translations selected for this verse.</p>
-            ) : (
-              <ul className="translation-list">
-                {v.translations.map((t) => (
-                  <li key={t.researcherId}>
-                    <span className="translation-source">{t.displayName}:</span> {t.text}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-        ))}
+        {results?.map((v) => {
+          const visibleTranslations = v.translations.filter((t) => selectedIds.has(t.researcherId));
+          return (
+            <article key={v.id} className="verse-card">
+              <div className="verse-meta">
+                Page {v.page}, Verse {v.verse}
+              </div>
+              <p className="verse-phrase">{v.phrase}</p>
+              {visibleTranslations.length === 0 ? (
+                <p className="no-translations">No translations selected for this verse.</p>
+              ) : (
+                <ul className="translation-list">
+                  {visibleTranslations.map((t) => (
+                    <li key={t.researcherId}>
+                      <span className="translation-source">{t.displayName}:</span> {t.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          );
+        })}
       </div>
     </main>
   );
