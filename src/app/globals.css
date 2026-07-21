@@ -361,6 +361,41 @@ a {
   margin-bottom: 1rem;
 }
 
+.page-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-nav button {
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--blue);
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.page-nav button:hover:not(:disabled) {
+  background: var(--blue-light);
+}
+
+.page-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-nav-current {
+  font-weight: 700;
+  color: var(--blue);
+  min-width: 6rem;
+  text-align: center;
+}
+
 .results {
   display: flex;
   flex-direction: column;

@@ -73,6 +73,9 @@ const KEYBOARD_COLUMNS = 10;
 const KEYBOARD_PADDING =
   (KEYBOARD_COLUMNS - (GURMUKHI_KEYS.length % KEYBOARD_COLUMNS)) % KEYBOARD_COLUMNS;
 
+// The Guru Granth Sahib has 1430 pages (Angs).
+const MAX_PAGE = 1430;
+
 export default function Home() {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -81,6 +84,9 @@ export default function Home() {
   const [results, setResults] = useState<VerseResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which page (Ang) is currently shown, only set after a successful
+  // page-number search -- drives the "Page N" heading and Prev/Next nav.
+  const [viewedPage, setViewedPage] = useState<number | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,11 +176,12 @@ export default function Home() {
     }
   }
 
-  async function runSearch(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!query.trim()) {
+  async function performSearch(searchMode: Mode, rawQuery: string) {
+    const q = rawQuery.trim();
+    if (!q) {
       setResults(null);
       setError(null);
+      setViewedPage(null);
       return;
     }
     setLoading(true);
@@ -183,20 +190,35 @@ export default function Home() {
       // Fetch every researcher's translation for the matched verses; which
       // ones are shown is then a pure client-side filter (see the render
       // below), so toggling a checkbox updates instantly with no refetch.
-      const params = new URLSearchParams({ mode, q: query.trim() });
+      const params = new URLSearchParams({ mode: searchMode, q });
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Search failed");
         setResults(null);
+        setViewedPage(null);
       } else {
         setResults(data.results);
+        setViewedPage(searchMode === "page" ? parseInt(q, 10) : null);
       }
     } catch {
       setError("Search failed. Please try again.");
+      setViewedPage(null);
     } finally {
       setLoading(false);
     }
+  }
+
+  function runSearch(e?: React.FormEvent) {
+    e?.preventDefault();
+    performSearch(mode, query);
+  }
+
+  function goToPage(page: number) {
+    const clamped = Math.min(Math.max(page, 1), MAX_PAGE);
+    const q = String(clamped);
+    setQuery(q);
+    performSearch("page", q);
   }
 
   return (
@@ -331,6 +353,26 @@ export default function Home() {
       </details>
 
       {error && <p className="error">{error}</p>}
+
+      {viewedPage !== null && (
+        <div className="page-nav">
+          <button
+            type="button"
+            onClick={() => goToPage(viewedPage - 1)}
+            disabled={loading || viewedPage <= 1}
+          >
+            ← Previous
+          </button>
+          <span className="page-nav-current">Page {viewedPage}</span>
+          <button
+            type="button"
+            onClick={() => goToPage(viewedPage + 1)}
+            disabled={loading || viewedPage >= MAX_PAGE}
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       <div className="results">
         {results !== null && results.length === 0 && !loading && <p>No matches found.</p>}
