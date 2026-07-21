@@ -201,47 +201,51 @@ export default function Home() {
 
   return (
     <main className="page">
-      <div className="page-title">
-        <h1>Gurbani Aarth Milaan</h1>
-        <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>
-      </div>
+      <div className="search-hero">
+        <div className="page-title">
+          <h1>Gurbani Aarth Milaan</h1>
+          <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>
+        </div>
 
-      <div className="mode-tabs">
-        {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={m === mode ? "mode-tab active" : "mode-tab"}
-            onClick={() => setMode(m)}
-          >
-            {MODE_LABELS[m]}
-          </button>
-        ))}
-      </div>
+        <div className="mode-tabs">
+          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={m === mode ? "mode-tab active" : "mode-tab"}
+              onClick={() => setMode(m)}
+            >
+              {MODE_LABELS[m]}
+            </button>
+          ))}
+        </div>
 
-      <form className="search-form" onSubmit={runSearch}>
-        <input
-          ref={searchInputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleSearchKeyDown}
-          placeholder={MODE_PLACEHOLDERS[mode]}
-          className="search-input"
-        />
-        <button
-          type="button"
-          className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
-          onClick={() => setShowKeyboard((v) => !v)}
-          aria-label="Toggle Gurmukhi keyboard"
-          title="Toggle Gurmukhi keyboard"
-        >
-          ⌨
-        </button>
-        <button type="submit" className="search-button" disabled={loading}>
-          {loading ? "Searching…" : "Search"}
-        </button>
-      </form>
+        <form className="search-form" onSubmit={runSearch}>
+          <div className="search-bar">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={MODE_PLACEHOLDERS[mode]}
+              className="search-input"
+            />
+            <button
+              type="button"
+              className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
+              onClick={() => setShowKeyboard((v) => !v)}
+              aria-label="Toggle Gurmukhi keyboard"
+              title="Toggle Gurmukhi keyboard"
+            >
+              ⌨
+            </button>
+            <button type="submit" className="search-button" disabled={loading}>
+              {loading ? "Searching…" : "Search"}
+            </button>
+          </div>
+        </form>
+      </div>
 
       {showKeyboard && (
         <div className="gurmukhi-keyboard">
