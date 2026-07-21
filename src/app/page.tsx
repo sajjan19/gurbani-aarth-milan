@@ -3,6 +3,49 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gurmukhiForRoman, romanLabelFor } from "@/lib/transliterate";
 
+function KeyboardIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <rect
+        x="2"
+        y="5"
+        width="20"
+        height="14"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="6" cy="9.5" r="0.9" fill="currentColor" />
+      <circle cx="10" cy="9.5" r="0.9" fill="currentColor" />
+      <circle cx="14" cy="9.5" r="0.9" fill="currentColor" />
+      <circle cx="18" cy="9.5" r="0.9" fill="currentColor" />
+      <circle cx="6" cy="13" r="0.9" fill="currentColor" />
+      <circle cx="10" cy="13" r="0.9" fill="currentColor" />
+      <circle cx="14" cy="13" r="0.9" fill="currentColor" />
+      <circle cx="18" cy="13" r="0.9" fill="currentColor" />
+      <line x1="6" y1="16" x2="18" y2="16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2.2" />
+      <line
+        x1="21"
+        y1="21"
+        x2="16.65"
+        y2="16.65"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 type Researcher = {
   id: number;
   key: string;
@@ -260,10 +303,16 @@ export default function Home() {
               aria-label="Toggle Gurmukhi keyboard"
               title="Toggle Gurmukhi keyboard"
             >
-              ⌨
+              <KeyboardIcon />
             </button>
-            <button type="submit" className="search-button" disabled={loading}>
-              {loading ? "Searching…" : "Search"}
+            <button
+              type="submit"
+              className="search-button"
+              disabled={loading}
+              aria-label="Search"
+              title="Search"
+            >
+              <SearchIcon />
             </button>
           </div>
         </form>
