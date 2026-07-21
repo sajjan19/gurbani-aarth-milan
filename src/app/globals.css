@@ -9,19 +9,6 @@
   --border: #d8dee6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --blue: #5b9bf2;
-    --blue-dark: #8fbdf7;
-    --blue-light: #132339;
-    --orange: #ff9d47;
-    --orange-dark: #ffb673;
-    --border: #2a3542;
-  }
-}
-
 html {
   height: 100%;
 }
@@ -52,12 +39,6 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
 }
 
 .site-header {
@@ -165,13 +146,17 @@ a {
 }
 
 .keyboard-toggle {
-  padding: 0.65rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid var(--blue);
   background: transparent;
   color: var(--blue);
   cursor: pointer;
-  font-size: 1.1rem;
+  font-size: 1.8rem;
   line-height: 1;
 }
 
@@ -225,7 +210,11 @@ a {
 
 .keyboard-key {
   width: 100%;
-  padding: 0.4rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.3rem 0.25rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--background);
@@ -238,6 +227,21 @@ a {
 .keyboard-key:hover {
   border-color: var(--orange);
   color: var(--orange);
+}
+
+.keyboard-key-glyph {
+  line-height: 1.2;
+}
+
+.keyboard-key-roman {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--blue);
+  text-transform: none;
+}
+
+.keyboard-key:hover .keyboard-key-roman {
+  color: var(--orange-dark);
 }
 
 .keyboard-key.wide {

@@ -96,7 +96,7 @@ export function searchByPhrase(query: string, researcherIds: number[] | null): V
       FROM (
         SELECT verse_id, bm25(search_fts) as rank
         FROM search_fts
-        WHERE text MATCH ?
+        WHERE text MATCH ? AND source_type = 'phrase'
         LIMIT -1
       ) matched
       JOIN verses v ON v.id = matched.verse_id
@@ -120,15 +120,15 @@ export function searchByPage(page: number, researcherIds: number[] | null): Vers
 }
 
 export function searchByInitials(initials: string, researcherIds: number[] | null): VerseResult[] {
-  const normalized = initials.trim().replace(/\s+/g, " ");
-  if (!normalized) return [];
+  const compact = initials.replace(/\s+/g, "");
+  if (!compact) return [];
 
   const db = getDb();
   const rows = db
     .prepare(
-      "SELECT id, page, verse, line, phrase FROM verses WHERE phrase_initials LIKE ? ORDER BY page, verse LIMIT ?"
+      "SELECT id, page, verse, line, phrase FROM verses WHERE phrase_initials_compact LIKE ? ORDER BY page, verse LIMIT ?"
     )
-    .all(`${normalized}%`, MAX_RESULTS) as Omit<VerseResult, "translations">[];
+    .all(`${compact}%`, MAX_RESULTS) as Omit<VerseResult, "translations">[];
 
   return attachTranslations(rows, researcherIds);
 }

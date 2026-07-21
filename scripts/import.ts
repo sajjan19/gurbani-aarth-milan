@@ -29,14 +29,14 @@ const RESEARCHERS: { key: string; displayName: string; language: "pa" | "en" }[]
   { key: "Kartar S", displayName: "Kartar Singh", language: "en" },
 ];
 
-function computeInitials(phrase: string): string {
+function computeInitials(phrase: string): string[] {
   const tokens = phrase.split(/\s+/).filter(Boolean);
   const initials: string[] = [];
   for (const token of tokens) {
     const match = token.match(/[਀-੿A-Za-z]/);
     if (match) initials.push(match[0]);
   }
-  return initials.join(" ");
+  return initials;
 }
 
 function main() {
@@ -56,7 +56,7 @@ function main() {
   });
 
   const insertVerse = db.prepare(
-    "INSERT INTO verses (page, verse, line, phrase, phrase_initials) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO verses (page, verse, line, phrase, phrase_initials, phrase_initials_compact) VALUES (?, ?, ?, ?, ?, ?)"
   );
   const insertTranslation = db.prepare(
     "INSERT INTO translations (verse_id, researcher_id, text) VALUES (?, ?, ?)"
@@ -104,7 +104,8 @@ function main() {
           verse,
           typeof line === "number" ? line : null,
           phrase,
-          initials
+          initials.join(" "),
+          initials.join("")
         );
         const verseId = verseInfo.lastInsertRowid as number;
         verseCount++;

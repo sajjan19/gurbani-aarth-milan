@@ -14,12 +14,13 @@ CREATE TABLE verses (
   verse INTEGER NOT NULL,
   line INTEGER,
   phrase TEXT NOT NULL,
-  phrase_initials TEXT NOT NULL,   -- space-separated first letter of each word, for initials search
+  phrase_initials TEXT NOT NULL,           -- space-separated first letter of each word
+  phrase_initials_compact TEXT NOT NULL,   -- same, with spaces removed, for initials search
   UNIQUE (page, verse)
 );
 
 CREATE INDEX idx_verses_page ON verses (page);
-CREATE INDEX idx_verses_initials ON verses (phrase_initials);
+CREATE INDEX idx_verses_initials_compact ON verses (phrase_initials_compact);
 
 -- A researcher's translation of a given verse (absent = not yet translated)
 CREATE TABLE translations (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { romanLabelFor, transliterateRoman } from "@/lib/transliterate";
 
 type Researcher = {
   id: number;
@@ -35,9 +36,9 @@ const MODE_LABELS: Record<Mode, string> = {
 };
 
 const MODE_PLACEHOLDERS: Record<Mode, string> = {
-  phrase: "Search a word or phrase, in Gurmukhi or a translation...",
+  phrase: "Search a word or phrase in Gurmukhi...",
   page: "Enter a page (Ang) number, 1-1430",
-  initials: "Type the first letter of each word, e.g. ਸ ਸ ਅ",
+  initials: "Type the first letter of each word, e.g. ਸਸਅ (spaces optional)",
 };
 
 type KeyboardKey = { value: string; label: string };
@@ -83,6 +84,15 @@ export default function Home() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Tracks live roman-to-Gurmukhi transliteration while typing on a Latin
+  // keyboard: romanBuffer is the raw letters typed in the current unbroken
+  // typing streak, queryBase is what `query` held right before that streak
+  // began. query is always romanBase + transliterate(romanBuffer) while a
+  // streak is active. Any non-typing change to query (virtual keyboard,
+  // paste, clear) resets both, so the next streak starts from scratch.
+  const romanBufferRef = useRef("");
+  const queryBaseRef = useRef("");
+
   useEffect(() => {
     fetch("/api/researchers")
       .then((res) => res.json())
@@ -121,6 +131,11 @@ export default function Home() {
     });
   }
 
+  function resetRomanStreak(newQuery: string) {
+    romanBufferRef.current = "";
+    queryBaseRef.current = newQuery;
+  }
+
   // Reads/writes `query` via closure rather than a functional setState update:
   // each call corresponds to one real click event, so `query` is always fresh
   // by the time the handler runs. A functional update here would be re-invoked
@@ -131,7 +146,9 @@ export default function Home() {
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start + char.length;
-    setQuery(query.slice(0, start) + char + query.slice(end));
+    const next = query.slice(0, start) + char + query.slice(end);
+    setQuery(next);
+    resetRomanStreak(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -143,15 +160,43 @@ export default function Home() {
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start === end ? Math.max(0, start - 1) : start;
-    setQuery(
+    const next =
       start === end
         ? query.slice(0, Math.max(0, start - 1)) + query.slice(end)
-        : query.slice(0, start) + query.slice(end)
-    );
+        : query.slice(0, start) + query.slice(end);
+    setQuery(next);
+    resetRomanStreak(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
     });
+  }
+
+  // Intercepts plain letter/digit/space/backspace keys to transliterate as
+  // the user types (e.g. "satnam" -> "ਸਤਨਾਮ"), while leaving shortcuts
+  // (Ctrl/Cmd combos), arrow keys, paste, etc. to behave normally. Native
+  // Gurmukhi keyboard input still works too: transliterateRoman() passes
+  // through any character it doesn't recognize as a roman letter unchanged.
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if (e.key === "Backspace") {
+      if (romanBufferRef.current.length > 0) {
+        e.preventDefault();
+        romanBufferRef.current = romanBufferRef.current.slice(0, -1);
+        setQuery(queryBaseRef.current + transliterateRoman(romanBufferRef.current));
+      } else {
+        backspaceAtCursor();
+      }
+      return;
+    }
+
+    if (e.key.length === 1) {
+      e.preventDefault();
+      if (romanBufferRef.current === "") queryBaseRef.current = query;
+      romanBufferRef.current += e.key;
+      setQuery(queryBaseRef.current + transliterateRoman(romanBufferRef.current));
+    }
   }
 
   async function runSearch(e?: React.FormEvent) {
@@ -209,7 +254,11 @@ export default function Home() {
           ref={searchInputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            resetRomanStreak(e.target.value);
+          }}
+          onKeyDown={handleSearchKeyDown}
           placeholder={MODE_PLACEHOLDERS[mode]}
           className="search-input"
         />
@@ -233,21 +282,32 @@ export default function Home() {
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
               ⌫ Backspace
             </button>
-            <button type="button" className="keyboard-key special" onClick={() => setQuery("")}>
+            <button
+              type="button"
+              className="keyboard-key special"
+              onClick={() => {
+                setQuery("");
+                resetRomanStreak("");
+              }}
+            >
               Clear
             </button>
           </div>
           <div className="keyboard-grid" style={{ gridTemplateColumns: `repeat(${KEYBOARD_COLUMNS}, 1fr)` }}>
-            {GURMUKHI_KEYS.map((key) => (
-              <button
-                key={key.value}
-                type="button"
-                className="keyboard-key"
-                onClick={() => insertAtCursor(key.value)}
-              >
-                {key.label}
-              </button>
-            ))}
+            {GURMUKHI_KEYS.map((key) => {
+              const romanLabel = romanLabelFor(key.value);
+              return (
+                <button
+                  key={key.value}
+                  type="button"
+                  className="keyboard-key"
+                  onClick={() => insertAtCursor(key.value)}
+                >
+                  <span className="keyboard-key-glyph">{key.label}</span>
+                  {romanLabel && <span className="keyboard-key-roman">{romanLabel}</span>}
+                </button>
+              );
+            })}
             {Array.from({ length: KEYBOARD_PADDING }).map((_, i) => (
               <span key={`pad-${i}`} className="keyboard-key-spacer" aria-hidden="true" />
             ))}
