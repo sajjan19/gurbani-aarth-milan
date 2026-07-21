@@ -201,10 +201,10 @@ export default function Home() {
 
   return (
     <main className="page">
-      <h1>Gurbani Aarth Milaan</h1>
-      <p className="subtitle">
-        Search the Guru Granth Sahib with translations from {researchers.length || "…"} researchers.
-      </p>
+      <div className="page-title">
+        <h1>Gurbani Aarth Milaan</h1>
+        <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>
+      </div>
 
       <div className="mode-tabs">
         {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
