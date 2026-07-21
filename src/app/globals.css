@@ -369,6 +369,7 @@ a {
 }
 
 .page-nav button {
+  width: 8rem;
   padding: 0.45rem 1rem;
   border-radius: 999px;
   border: 1px solid var(--blue);

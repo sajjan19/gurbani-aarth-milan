@@ -4,7 +4,7 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <Link href="/" className="site-brand">
-        <img src="/logo-full.png" alt="Gurbani Aarth Milaan" className="site-logo-full" />
+        <img src="/logo-full.png" alt="Gurbani Aarth Milan" className="site-logo-full" />
       </Link>
       <nav className="site-nav">
         <Link href="/">Search</Link>

@@ -10,7 +10,7 @@ const notoSansGurmukhi = Noto_Sans_Gurmukhi({
 });
 
 export const metadata: Metadata = {
-  title: "Gurbani Aarth Milaan",
+  title: "Gurbani Aarth Milan",
   description: "Search the Guru Granth Sahib with translations from multiple researchers",
 };
 

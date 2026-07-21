@@ -11,7 +11,7 @@ export default function ContactPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const subject = `Message from ${name || "the Gurbani Aarth Milaan site"}`;
+    const subject = `Message from ${name || "the Gurbani Aarth Milan site"}`;
     const body = `${message}\n\n— ${name}${email ? ` (${email})` : ""}`;
     window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
       subject

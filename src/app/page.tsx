@@ -225,7 +225,7 @@ export default function Home() {
     <main className="page">
       <div className="search-hero">
         <div className="page-title">
-          <h1>Gurbani Aarth Milaan</h1>
+          <h1>Gurbani Aarth Milan</h1>
           <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>
         </div>
 
