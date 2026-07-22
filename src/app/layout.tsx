@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Gurmukhi } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import "./globals.css";
-
-const notoSansGurmukhi = Noto_Sans_Gurmukhi({
-  subsets: ["gurmukhi", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-gurmukhi",
-});
 
 export const metadata: Metadata = {
   title: "Gurbani Aarth Milan",
@@ -20,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={notoSansGurmukhi.variable}>
+    <html lang="en">
       <body>
         <SiteHeader />
         {children}

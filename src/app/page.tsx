@@ -354,18 +354,48 @@ export default function Home() {
       )}
 
       <details className="filters">
-        <summary>Filter by researcher ({selectedIds.size} of {researchers.length} selected)</summary>
+        <summary>
+          Filter by researcher{" "}
+          <span className={selectedIds.size === 0 ? "filter-count filter-count-zero" : "filter-count"}>
+            ({selectedIds.size} of {researchers.length} selected)
+          </span>
+        </summary>
+
+        {selectedIds.size === 0 && (
+          <p className="filter-warning">No researchers selected — results won&apos;t show any translations.</p>
+        )}
+
+        <div className="filter-toolbar">
+          <button
+            type="button"
+            className="filter-toolbar-action"
+            onClick={() => toggleGroup(researchers.map((r) => r.id), true)}
+          >
+            Select all
+          </button>
+          <span className="filter-toolbar-divider" aria-hidden="true">
+            ·
+          </span>
+          <button
+            type="button"
+            className="filter-toolbar-action"
+            onClick={() => toggleGroup(researchers.map((r) => r.id), false)}
+          >
+            Clear all
+          </button>
+        </div>
+
         <div className="filter-groups">
           <fieldset>
-            <legend>
-              Punjabi
+            <legend>Punjabi</legend>
+            <div className="filter-group-actions">
               <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), true)}>
                 All
               </button>
               <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), false)}>
                 None
               </button>
-            </legend>
+            </div>
             {punjabiResearchers.map((r) => (
               <label key={r.id} className="researcher-checkbox">
                 <input
@@ -378,15 +408,15 @@ export default function Home() {
             ))}
           </fieldset>
           <fieldset>
-            <legend>
-              English
+            <legend>English</legend>
+            <div className="filter-group-actions">
               <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), true)}>
                 All
               </button>
               <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), false)}>
                 None
               </button>
-            </legend>
+            </div>
             {englishResearchers.map((r) => (
               <label key={r.id} className="researcher-checkbox">
                 <input
