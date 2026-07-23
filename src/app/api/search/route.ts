@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { suggestGurmukhi } from "@/lib/gurmukhiSuggest";
 import { searchByInitials, searchByPage, searchByPhrase } from "@/lib/search";
-import { transliteratePhonetic } from "@/lib/transliterate";
+import { transliterateLetters } from "@/lib/transliterate";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
       });
     }
     case "initials": {
-      const interpreted = /[A-Za-z]/.test(q) ? transliteratePhonetic(q) : null;
+      // Each roman letter here is the first letter of its own word (e.g.
+      // "ssa" -> ਸ ਸ ਅ), not a syllable to read phonetically, so map each
+      // character independently rather than merging vowels into consonants.
+      const interpreted = /[A-Za-z]/.test(q) ? transliterateLetters(q) : null;
       const searchQuery = interpreted ?? q;
       return NextResponse.json({
         results: searchByInitials(searchQuery, researcherIds),

@@ -3,6 +3,19 @@ import { getVocabulary, type VocabWord } from "./vocabulary";
 
 const LATIN_RE = /[A-Za-z]/;
 
+// ੴ (Ik Onkar) is a single ligature, not a word spelled out of ordinary
+// consonants and matras -- it can't be phonetically transliterated or found
+// via the word vocabulary (which strips it out as punctuation), so common
+// roman spellings are special-cased directly to the symbol.
+const IK_ONKAR_ALIASES = new Set([
+  "ikonkar", "ekonkar", "ikongkar", "ekongkar", "ikonkaar", "ekonkaar", "ikaunkar", "ekaunkar",
+]);
+
+function matchIkOnkar(rawQuery: string): string | null {
+  const normalized = rawQuery.trim().toLowerCase().replace(/\s+/g, "");
+  return IK_ONKAR_ALIASES.has(normalized) ? "ੴ" : null;
+}
+
 // Vowel signs (matras) and other combining marks: our rule-based phonetic
 // reading gets consonants right far more reliably than it gets these right
 // (dropped inherent vowels, wrong long/short matra, missing nasalization),
@@ -125,6 +138,9 @@ function closestWord(guess: string, vocabulary: VocabWord[]): string | null {
 // roman letters, or if nothing changed.
 export function suggestGurmukhi(rawQuery: string): string | null {
   if (!LATIN_RE.test(rawQuery)) return null;
+
+  const ikOnkar = matchIkOnkar(rawQuery);
+  if (ikOnkar) return ikOnkar;
 
   const vocabulary = getVocabulary();
   const tokens = rawQuery.trim().split(/\s+/);

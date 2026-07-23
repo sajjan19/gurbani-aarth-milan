@@ -85,6 +85,18 @@ export function romanLabelFor(gurmukhiChar: string): string | undefined {
   return GURMUKHI_TO_ROMAN[gurmukhiChar];
 }
 
+// For "first letters" search: each typed roman letter is the first letter
+// of a separate word (e.g. "ssa" -> ਸ ਸ ਅ, one letter per word), so this
+// maps every character independently via the strict 1:1 table above rather
+// than reading it as a single phonetic syllable the way transliteratePhonetic
+// would (which -- correctly, for whole-word typing -- would merge "sa" into
+// one syllable and read the trailing "a" as an inherent vowel instead of an
+// ਅ of its own). Unmapped characters (digits, spaces, punctuation) pass
+// through unchanged.
+export function transliterateLetters(input: string): string {
+  return [...input].map((ch) => gurmukhiForRoman(ch) ?? ch).join("");
+}
+
 // --- Phonetic best-guess engine, used for typing in the search box -------
 //
 // Separate from the strict 1:1 map above (which stays as-is for the virtual

@@ -93,20 +93,25 @@ export function searchByPhrase(query: string, researcherIds: number[] | null): V
   const db = getDb();
   const matchExpr = `"${escaped}"*`;
 
+  // Pick the most relevant matches by bm25 rank first, then display that
+  // set in page order (1-1430) rather than by relevance.
   const rows = db
     .prepare(
       `
-      SELECT v.id, v.page, v.verse, v.line, v.phrase, MIN(matched.rank) as rank
-      FROM (
-        SELECT verse_id, bm25(search_fts) as rank
-        FROM search_fts
-        WHERE text MATCH ? AND source_type = 'phrase'
-        LIMIT -1
-      ) matched
-      JOIN verses v ON v.id = matched.verse_id
-      GROUP BY v.id
-      ORDER BY rank ASC
-      LIMIT ?
+      SELECT * FROM (
+        SELECT v.id, v.page, v.verse, v.line, v.phrase, MIN(matched.rank) as rank
+        FROM (
+          SELECT verse_id, bm25(search_fts) as rank
+          FROM search_fts
+          WHERE text MATCH ? AND source_type = 'phrase'
+          LIMIT -1
+        ) matched
+        JOIN verses v ON v.id = matched.verse_id
+        GROUP BY v.id
+        ORDER BY rank ASC
+        LIMIT ?
+      )
+      ORDER BY page ASC, verse ASC
       `
     )
     .all(matchExpr, MAX_RESULTS) as Omit<VerseResult, "translations">[];
