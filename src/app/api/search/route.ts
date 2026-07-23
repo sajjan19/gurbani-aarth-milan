@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { suggestGurmukhi } from "@/lib/gurmukhiSuggest";
 import { searchByInitials, searchByPage, searchByPhrase } from "@/lib/search";
+import { transliteratePhonetic } from "@/lib/transliterate";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -21,10 +23,26 @@ export async function GET(request: NextRequest) {
   }
 
   switch (mode) {
-    case "phrase":
-      return NextResponse.json({ results: searchByPhrase(q, researcherIds) });
-    case "initials":
-      return NextResponse.json({ results: searchByInitials(q, researcherIds) });
+    case "phrase": {
+      // If the query was typed in roman letters, guess what Gurmukhi it
+      // means by snapping each word to the closest real word in the text
+      // (e.g. "satnam" -> "ਸਤਿਨਾਮੁ", how it's actually spelled), rather than
+      // trusting a naive letter-by-letter reading -- then search with that.
+      const interpreted = suggestGurmukhi(q);
+      const searchQuery = interpreted ?? q;
+      return NextResponse.json({
+        results: searchByPhrase(searchQuery, researcherIds),
+        interpretedQuery: interpreted,
+      });
+    }
+    case "initials": {
+      const interpreted = /[A-Za-z]/.test(q) ? transliteratePhonetic(q) : null;
+      const searchQuery = interpreted ?? q;
+      return NextResponse.json({
+        results: searchByInitials(searchQuery, researcherIds),
+        interpretedQuery: interpreted !== q ? interpreted : null,
+      });
+    }
     case "page": {
       const page = parseInt(q, 10);
       if (!Number.isFinite(page) || page < 1) {

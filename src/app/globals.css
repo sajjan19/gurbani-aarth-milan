@@ -209,6 +209,19 @@ a {
   outline: none;
 }
 
+.search-suggestion {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--foreground);
+  opacity: 0.65;
+  text-align: center;
+}
+
+.search-suggestion-gurmukhi {
+  font-weight: 600;
+  color: inherit;
+}
+
 .keyboard-toggle {
   flex-shrink: 0;
   display: flex;

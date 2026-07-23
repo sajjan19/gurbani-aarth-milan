@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { gurmukhiForRoman, romanLabelFor } from "@/lib/transliterate";
+import { romanLabelFor } from "@/lib/transliterate";
 
 function KeyboardIcon() {
   return (
@@ -131,6 +131,11 @@ export default function Home() {
   // page-number search -- drives the "Page N" heading and Prev/Next nav.
   const [viewedPage, setViewedPage] = useState<number | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  // The Gurmukhi phonetic guess for the last search, shown under the search
+  // bar so the user can see how their roman typing was interpreted -- set
+  // only when the submitted query actually got transliterated (see
+  // performSearch).
+  const [suggestion, setSuggestion] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -171,17 +176,13 @@ export default function Home() {
     });
   }
 
-  // Reads/writes `query` via closure rather than a functional setState update:
-  // each call corresponds to one real click event, so `query` is always fresh
-  // by the time the handler runs. A functional update here would be re-invoked
-  // twice under React Strict Mode (dev only) and double-insert the character,
-  // since reading `input.selectionStart` as a side effect isn't idempotent.
   function insertAtCursor(char: string) {
     const input = searchInputRef.current;
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start + char.length;
-    setQuery(query.slice(0, start) + char + query.slice(end));
+    const next = query.slice(0, start) + char + query.slice(end);
+    setQuery(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -193,39 +194,35 @@ export default function Home() {
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start === end ? Math.max(0, start - 1) : start;
-    setQuery(
+    const next =
       start === end
         ? query.slice(0, Math.max(0, start - 1)) + query.slice(end)
-        : query.slice(0, start) + query.slice(end)
-    );
+        : query.slice(0, start) + query.slice(end);
+    setQuery(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
     });
   }
 
-  // Each mapped roman key produces exactly one Gurmukhi character (see
-  // src/lib/transliterate.ts), so a keystroke is just "look up, then insert
-  // at the cursor" -- reusing insertAtCursor means selection-replace,
-  // mid-string editing, etc. all work the same as clicking the virtual
-  // keyboard. Unmapped keys (digits, punctuation, native Gurmukhi input)
-  // are left alone so they behave normally.
-  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const mapped = gurmukhiForRoman(e.key);
-    if (mapped) {
-      e.preventDefault();
-      insertAtCursor(mapped);
-    }
-  }
-
   async function performSearch(searchMode: Mode, rawQuery: string) {
-    const q = rawQuery.trim();
-    if (!q) {
+    const trimmed = rawQuery.trim();
+    if (!trimmed) {
       setResults(null);
       setError(null);
       setViewedPage(null);
+      setSuggestion(null);
       return;
+    }
+    if (searchMode === "page") {
+      const page = Number(trimmed);
+      if (!Number.isInteger(page) || page < 1 || page > MAX_PAGE) {
+        setResults(null);
+        setError(`Please enter a page number between 1 and ${MAX_PAGE}.`);
+        setViewedPage(null);
+        setSuggestion(null);
+        return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -233,20 +230,27 @@ export default function Home() {
       // Fetch every researcher's translation for the matched verses; which
       // ones are shown is then a pure client-side filter (see the render
       // below), so toggling a checkbox updates instantly with no refetch.
-      const params = new URLSearchParams({ mode: searchMode, q });
+      // The roman-to-Gurmukhi guessing (and, for phrase mode, snapping each
+      // word to the closest real word in the text) happens server-side --
+      // see /api/search -- since it needs the full word vocabulary built
+      // from the phrase column.
+      const params = new URLSearchParams({ mode: searchMode, q: trimmed });
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Search failed");
         setResults(null);
         setViewedPage(null);
+        setSuggestion(null);
       } else {
         setResults(data.results);
-        setViewedPage(searchMode === "page" ? parseInt(q, 10) : null);
+        setViewedPage(searchMode === "page" ? parseInt(trimmed, 10) : null);
+        setSuggestion(data.interpretedQuery ?? null);
       }
     } catch {
       setError("Search failed. Please try again.");
       setViewedPage(null);
+      setSuggestion(null);
     } finally {
       setLoading(false);
     }
@@ -292,9 +296,9 @@ export default function Home() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
               placeholder={MODE_PLACEHOLDERS[mode]}
               className="search-input"
+              autoComplete="off"
             />
             <button
               type="button"
@@ -316,6 +320,12 @@ export default function Home() {
             </button>
           </div>
         </form>
+
+        {suggestion && (
+          <p className="search-suggestion">
+            Searching for <span className="search-suggestion-gurmukhi">{suggestion}</span>
+          </p>
+        )}
       </div>
 
       {showKeyboard && (

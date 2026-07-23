@@ -84,3 +84,115 @@ export function gurmukhiForRoman(char: string): string | undefined {
 export function romanLabelFor(gurmukhiChar: string): string | undefined {
   return GURMUKHI_TO_ROMAN[gurmukhiChar];
 }
+
+// --- Phonetic best-guess engine, used for typing in the search box -------
+//
+// Separate from the strict 1:1 map above (which stays as-is for the virtual
+// keyboard's letter captions). This is a natural-spelling guesser: typing
+// "satnaam" produces "ਸਤਨਾਮ", using common digraphs (kh, sh, aa, ai, ...)
+// and case only where it distinguishes a genuinely different sound
+// (retroflex ਟ/ਡ/ਣ vs dental ਤ/ਦ/ਨ, and nukta ਖ਼/ਗ਼/ਲ਼ loan sounds). It won't
+// always produce the "correct" spelling -- nasalization in particular is
+// ambiguous from roman text alone -- but search only needs a close guess.
+type VowelEntry = { roman: string; independent: string; matra: string };
+
+const PHONETIC_VOWELS: VowelEntry[] = [
+  { roman: "aa", independent: "ਆ", matra: "ਾ" },
+  { roman: "ai", independent: "ਐ", matra: "ੈ" },
+  { roman: "au", independent: "ਔ", matra: "ੌ" },
+  { roman: "ee", independent: "ਈ", matra: "ੀ" },
+  { roman: "oo", independent: "ਊ", matra: "ੂ" },
+  { roman: "a", independent: "ਅ", matra: "" },
+  { roman: "i", independent: "ਇ", matra: "ਿ" },
+  { roman: "u", independent: "ਉ", matra: "ੁ" },
+  { roman: "e", independent: "ਏ", matra: "ੇ" },
+  { roman: "o", independent: "ਓ", matra: "ੋ" },
+];
+
+const PHONETIC_CONSONANTS: { roman: string; gurmukhi: string }[] = [
+  { roman: "kh", gurmukhi: "ਖ" },
+  { roman: "gh", gurmukhi: "ਘ" },
+  { roman: "ch", gurmukhi: "ਛ" },
+  { roman: "jh", gurmukhi: "ਝ" },
+  { roman: "Th", gurmukhi: "ਠ" },
+  { roman: "Dh", gurmukhi: "ਢ" },
+  { roman: "th", gurmukhi: "ਥ" },
+  { roman: "dh", gurmukhi: "ਧ" },
+  { roman: "ph", gurmukhi: "ਫ" },
+  { roman: "bh", gurmukhi: "ਭ" },
+  { roman: "sh", gurmukhi: "ਸ਼" },
+  { roman: "T", gurmukhi: "ਟ" },
+  { roman: "D", gurmukhi: "ਡ" },
+  { roman: "N", gurmukhi: "ਣ" },
+  { roman: "R", gurmukhi: "ੜ" },
+  { roman: "K", gurmukhi: "ਖ਼" },
+  { roman: "G", gurmukhi: "ਗ਼" },
+  { roman: "L", gurmukhi: "ਲ਼" },
+  { roman: "k", gurmukhi: "ਕ" },
+  { roman: "g", gurmukhi: "ਗ" },
+  { roman: "c", gurmukhi: "ਚ" },
+  { roman: "j", gurmukhi: "ਜ" },
+  { roman: "t", gurmukhi: "ਤ" },
+  { roman: "d", gurmukhi: "ਦ" },
+  { roman: "n", gurmukhi: "ਨ" },
+  { roman: "p", gurmukhi: "ਪ" },
+  { roman: "b", gurmukhi: "ਬ" },
+  { roman: "m", gurmukhi: "ਮ" },
+  { roman: "y", gurmukhi: "ਯ" },
+  { roman: "r", gurmukhi: "ਰ" },
+  { roman: "l", gurmukhi: "ਲ" },
+  { roman: "v", gurmukhi: "ਵ" },
+  { roman: "w", gurmukhi: "ਵ" },
+  { roman: "s", gurmukhi: "ਸ" },
+  { roman: "h", gurmukhi: "ਹ" },
+  { roman: "z", gurmukhi: "ਜ਼" },
+  { roman: "f", gurmukhi: "ਫ਼" },
+];
+
+const vowelsByLength = [...PHONETIC_VOWELS].sort((a, b) => b.roman.length - a.roman.length);
+const consonantsByLength = [...PHONETIC_CONSONANTS].sort((a, b) => b.roman.length - a.roman.length);
+
+// Re-transliterates the whole buffer on every call (cheap at search-box
+// length) rather than trying to append incrementally, since a later
+// keystroke can change how an earlier one should have been read -- e.g.
+// "s" alone is ਸ, but "sh" retroactively means the "s" was the start of ਸ਼.
+export function transliteratePhonetic(input: string): string {
+  let result = "";
+  let i = 0;
+  let afterConsonant = false;
+
+  while (i < input.length) {
+    const ch = input[i];
+
+    if (!/[A-Za-z]/.test(ch)) {
+      result += ch;
+      afterConsonant = false;
+      i += 1;
+      continue;
+    }
+
+    const vowel = vowelsByLength.find((v) => input.startsWith(v.roman, i));
+    if (vowel) {
+      result += afterConsonant ? vowel.matra : vowel.independent;
+      afterConsonant = false;
+      i += vowel.roman.length;
+      continue;
+    }
+
+    const consonant = consonantsByLength.find((c) => input.startsWith(c.roman, i));
+    if (consonant) {
+      result += consonant.gurmukhi;
+      afterConsonant = true;
+      i += consonant.roman.length;
+      continue;
+    }
+
+    // Unmapped letter (shouldn't normally happen -- every a-z/A-Z is
+    // covered above): pass it through rather than silently dropping it.
+    result += ch;
+    afterConsonant = false;
+    i += 1;
+  }
+
+  return result;
+}
