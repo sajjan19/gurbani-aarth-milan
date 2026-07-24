@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { romanLabelFor } from "@/lib/transliterate";
 
 function KeyboardIcon() {
   return (
@@ -131,11 +130,16 @@ export default function Home() {
   // page-number search -- drives the "Page N" heading and Prev/Next nav.
   const [viewedPage, setViewedPage] = useState<number | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   // The Gurmukhi phonetic guess for the last search, shown under the search
   // bar so the user can see how their roman typing was interpreted -- set
   // only when the submitted query actually got transliterated (see
-  // performSearch).
+  // performSearch). `suggestionExact` is false when the guess required
+  // fuzzy correction rather than matching a real word outright, in which
+  // case `alternateQuery` (if any) is offered as a "did you mean" pick.
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestionExact, setSuggestionExact] = useState(true);
+  const [alternateQuery, setAlternateQuery] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -146,6 +150,15 @@ export default function Home() {
         setSelectedIds(new Set(data.researchers.map((r) => r.id)));
       });
   }, []);
+
+  useEffect(() => {
+    if (!showFilterModal) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowFilterModal(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showFilterModal]);
 
   const punjabiResearchers = useMemo(
     () => researchers.filter((r) => r.language === "pa"),
@@ -212,6 +225,7 @@ export default function Home() {
       setError(null);
       setViewedPage(null);
       setSuggestion(null);
+      setAlternateQuery(null);
       return;
     }
     if (searchMode === "page") {
@@ -221,6 +235,7 @@ export default function Home() {
         setError(`Please enter a page number between 1 and ${MAX_PAGE}.`);
         setViewedPage(null);
         setSuggestion(null);
+        setAlternateQuery(null);
         return;
       }
     }
@@ -231,9 +246,10 @@ export default function Home() {
       // ones are shown is then a pure client-side filter (see the render
       // below), so toggling a checkbox updates instantly with no refetch.
       // The roman-to-Gurmukhi guessing (and, for phrase mode, snapping each
-      // word to the closest real word in the text) happens server-side --
-      // see /api/search -- since it needs the full word vocabulary built
-      // from the phrase column.
+      // word to the closest real word in the text, searching close
+      // alternates alongside it) happens server-side -- see /api/search --
+      // since it needs the full word vocabulary built from the phrase
+      // column.
       const params = new URLSearchParams({ mode: searchMode, q: trimmed });
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
@@ -242,15 +258,19 @@ export default function Home() {
         setResults(null);
         setViewedPage(null);
         setSuggestion(null);
+        setAlternateQuery(null);
       } else {
         setResults(data.results);
         setViewedPage(searchMode === "page" ? parseInt(trimmed, 10) : null);
         setSuggestion(data.interpretedQuery ?? null);
+        setSuggestionExact(data.exact ?? true);
+        setAlternateQuery(data.alternateQuery ?? null);
       }
     } catch {
       setError("Search failed. Please try again.");
       setViewedPage(null);
       setSuggestion(null);
+      setAlternateQuery(null);
     } finally {
       setLoading(false);
     }
@@ -265,7 +285,24 @@ export default function Home() {
     const clamped = Math.min(Math.max(page, 1), MAX_PAGE);
     const q = String(clamped);
     setQuery(q);
-    performSearch("page", q);
+    return performSearch("page", q);
+  }
+
+  // Used by the bottom nav's Previous/Next -- without this the page loads
+  // new verses while the user is still scrolled to the bottom of the old
+  // ones, well below the new content. Waits for the new results to finish
+  // rendering before starting the scroll: swapping in the new (differently
+  // sized) results while a smooth scroll is still animating makes the
+  // browser cancel the animation partway, leaving the page stranded well
+  // above the top.
+  async function goToPageAndScrollTop(page: number) {
+    await goToPage(page);
+    // One more frame so the browser has actually painted the new (shorter
+    // or taller) results layout before the scroll animation starts --
+    // awaiting the state update doesn't guarantee React has committed it.
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
 
   return (
@@ -323,7 +360,23 @@ export default function Home() {
 
         {suggestion && (
           <p className="search-suggestion">
-            Searching for <span className="search-suggestion-gurmukhi">{suggestion}</span>
+            Showing results for <span className="search-suggestion-gurmukhi">{suggestion}</span>
+            {!suggestionExact && alternateQuery && (
+              <>
+                {" — Did you mean "}
+                <button
+                  type="button"
+                  className="search-suggestion-alt"
+                  onClick={() => {
+                    setQuery(alternateQuery);
+                    performSearch(mode, alternateQuery);
+                  }}
+                >
+                  {alternateQuery}
+                </button>
+                {"?"}
+              </>
+            )}
           </p>
         )}
       </div>
@@ -339,20 +392,16 @@ export default function Home() {
             </button>
           </div>
           <div className="keyboard-grid" style={{ gridTemplateColumns: `repeat(${KEYBOARD_COLUMNS}, 1fr)` }}>
-            {GURMUKHI_KEYS.map((key) => {
-              const romanLabel = romanLabelFor(key.value);
-              return (
-                <button
-                  key={key.value}
-                  type="button"
-                  className="keyboard-key"
-                  onClick={() => insertAtCursor(key.value)}
-                >
-                  <span className="keyboard-key-glyph">{key.label}</span>
-                  {romanLabel && <span className="keyboard-key-roman">{romanLabel}</span>}
-                </button>
-              );
-            })}
+            {GURMUKHI_KEYS.map((key) => (
+              <button
+                key={key.value}
+                type="button"
+                className="keyboard-key"
+                onClick={() => insertAtCursor(key.value)}
+              >
+                <span className="keyboard-key-glyph">{key.label}</span>
+              </button>
+            ))}
             {Array.from({ length: KEYBOARD_PADDING }).map((_, i) => (
               <span key={`pad-${i}`} className="keyboard-key-spacer" aria-hidden="true" />
             ))}
@@ -363,83 +412,109 @@ export default function Home() {
         </div>
       )}
 
-      <details className="filters">
-        <summary>
-          Filter by researcher{" "}
-          <span className={selectedIds.size === 0 ? "filter-count filter-count-zero" : "filter-count"}>
-            ({selectedIds.size} of {researchers.length} selected)
-          </span>
-        </summary>
+      <button type="button" className="filters-trigger" onClick={() => setShowFilterModal(true)}>
+        Filter by researcher{" "}
+        <span className={selectedIds.size === 0 ? "filter-count filter-count-zero" : "filter-count"}>
+          ({selectedIds.size} of {researchers.length} selected)
+        </span>
+      </button>
 
-        {selectedIds.size === 0 && (
-          <p className="filter-warning">No researchers selected — results won&apos;t show any translations.</p>
-        )}
-
-        <div className="filter-toolbar">
-          <button
-            type="button"
-            className="filter-toolbar-action"
-            onClick={() => toggleGroup(researchers.map((r) => r.id), true)}
+      {showFilterModal && (
+        <div className="modal-overlay" onClick={() => setShowFilterModal(false)}>
+          <div
+            className="modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filter by researcher"
+            onClick={(e) => e.stopPropagation()}
           >
-            Select all
-          </button>
-          <span className="filter-toolbar-divider" aria-hidden="true">
-            ·
-          </span>
-          <button
-            type="button"
-            className="filter-toolbar-action"
-            onClick={() => toggleGroup(researchers.map((r) => r.id), false)}
-          >
-            Clear all
-          </button>
-        </div>
-
-        <div className="filter-groups">
-          <fieldset>
-            <legend>Punjabi</legend>
-            <div className="filter-group-actions">
-              <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), true)}>
-                All
-              </button>
-              <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), false)}>
-                None
+            <div className="modal-header">
+              <h2>Filter by researcher</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setShowFilterModal(false)}
+                aria-label="Close"
+              >
+                ✕
               </button>
             </div>
-            {punjabiResearchers.map((r) => (
-              <label key={r.id} className="researcher-checkbox">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(r.id)}
-                  onChange={() => toggleResearcher(r.id)}
-                />
-                {r.displayName}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend>English</legend>
-            <div className="filter-group-actions">
-              <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), true)}>
-                All
+
+            {selectedIds.size === 0 && (
+              <p className="filter-warning">No researchers selected — results won&apos;t show any translations.</p>
+            )}
+
+            <div className="filter-toolbar">
+              <button
+                type="button"
+                className="filter-toolbar-action"
+                onClick={() => toggleGroup(researchers.map((r) => r.id), true)}
+              >
+                Select all
               </button>
-              <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), false)}>
-                None
+              <span className="filter-toolbar-divider" aria-hidden="true">
+                ·
+              </span>
+              <button
+                type="button"
+                className="filter-toolbar-action"
+                onClick={() => toggleGroup(researchers.map((r) => r.id), false)}
+              >
+                Clear all
               </button>
             </div>
-            {englishResearchers.map((r) => (
-              <label key={r.id} className="researcher-checkbox">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(r.id)}
-                  onChange={() => toggleResearcher(r.id)}
-                />
-                {r.displayName}
-              </label>
-            ))}
-          </fieldset>
+
+            <div className="filter-groups">
+              <fieldset>
+                <legend>Punjabi</legend>
+                <div className="filter-group-actions">
+                  <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), true)}>
+                    All
+                  </button>
+                  <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), false)}>
+                    None
+                  </button>
+                </div>
+                {punjabiResearchers.map((r) => (
+                  <label key={r.id} className="researcher-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleResearcher(r.id)}
+                    />
+                    {r.displayName}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset>
+                <legend>English</legend>
+                <div className="filter-group-actions">
+                  <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), true)}>
+                    All
+                  </button>
+                  <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), false)}>
+                    None
+                  </button>
+                </div>
+                {englishResearchers.map((r) => (
+                  <label key={r.id} className="researcher-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleResearcher(r.id)}
+                    />
+                    {r.displayName}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+
+            <button type="button" className="modal-done" onClick={() => setShowFilterModal(false)}>
+              Done
+            </button>
+          </div>
         </div>
-      </details>
+      )}
 
       {error && <p className="error">{error}</p>}
 
@@ -488,6 +563,44 @@ export default function Home() {
           );
         })}
       </div>
+
+      {viewedPage !== null && (
+        <div className="page-nav page-nav-bottom">
+          <button
+            type="button"
+            onClick={() => goToPageAndScrollTop(viewedPage - 1)}
+            disabled={loading || viewedPage <= 1}
+          >
+            ← Page {viewedPage - 1}
+          </button>
+          <button
+            type="button"
+            className="page-nav-top"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            ↑ Page {viewedPage}
+          </button>
+          <button
+            type="button"
+            onClick={() => goToPageAndScrollTop(viewedPage + 1)}
+            disabled={loading || viewedPage >= MAX_PAGE}
+          >
+            Page {viewedPage + 1} →
+          </button>
+        </div>
+      )}
+
+      {viewedPage === null && results !== null && results.length > 0 && (
+        <div className="page-nav page-nav-bottom">
+          <button
+            type="button"
+            className="page-nav-top"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            ↑ Return to top
+          </button>
+        </div>
+      )}
     </main>
   );
 }

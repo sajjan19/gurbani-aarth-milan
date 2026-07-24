@@ -35,6 +35,12 @@ const CONSONANT_COST = 1;
 const NASAL_CONSONANTS = new Set(["ਨ", "ਣ", "ਮ"]);
 const NASAL_MARKS = new Set(["ਂ", "ੰ"]);
 
+// "b"/"v" (ਬ/ਵ) commonly alternate in the same word depending on spelling
+// convention (gobind/govind, etc.) -- phonetically adjacent, so treat a
+// substitution between them like a matra swap rather than a full consonant
+// swap.
+const SOFT_CONSONANT_PAIRS = new Set(["ਬਵ", "ਵਬ"]);
+
 function editCost(ch: string): number {
   return MATRA_CHARS.has(ch) ? MATRA_COST : CONSONANT_COST;
 }
@@ -47,6 +53,7 @@ function subCost(a: string, b: string): number {
   if (a === b) return 0;
   if (MATRA_CHARS.has(a) && MATRA_CHARS.has(b)) return MATRA_COST;
   if (isNasalSwap(a, b)) return MATRA_COST;
+  if (SOFT_CONSONANT_PAIRS.has(a + b)) return MATRA_COST;
   return CONSONANT_COST;
 }
 
@@ -92,64 +99,120 @@ function scoreOf(dist: number, count: number): number {
   return dist - FREQUENCY_WEIGHT * Math.log2(count + 1);
 }
 
-// Scans `words` for the entry closest to `guess`, ranking candidates by
-// (weighted) edit distance with a frequency nudge (see FREQUENCY_WEIGHT).
-function nearest(guess: string, words: VocabWord[]): { word: string; dist: number } | null {
-  let best: { word: string; dist: number } | null = null;
-  let bestScore = Infinity;
-  for (const candidate of words) {
-    const dist = editDistance(guess, candidate.word);
-    const score = scoreOf(dist, candidate.count);
-    if (score < bestScore) {
-      bestScore = score;
-      best = { word: candidate.word, dist };
-    }
-  }
-  return best;
-}
+type Ranked = { word: string; dist: number; score: number };
 
-// Finds the vocabulary word closest to `guess`. Rejects the match if it's
-// still too different to plausibly be what was meant (longer words
-// tolerate more edits than short ones). Our rule-based phonetic reading of
-// the first consonant is usually reliable even when later syllables drift,
-// so we first restrict the search to words starting with the same
-// character -- plain nearest-neighbor over all 30k+ words otherwise tends
-// to snap short guesses to an unrelated word that merely happens to be a
-// close character-count match. Only falls back to the full vocabulary if
-// that comes up empty.
-function closestWord(guess: string, vocabulary: VocabWord[]): string | null {
-  if (!guess) return null;
-
+// Ranks every candidate in `words` against `guess` by (weighted) edit
+// distance with a frequency nudge, restricting to words starting with the
+// same character first -- our rule-based phonetic reading of the first
+// consonant is usually reliable even when later syllables drift, and plain
+// nearest-neighbor over all 30k+ words otherwise tends to snap short
+// guesses to an unrelated word that merely happens to be a close
+// character-count match. Falls back to the full vocabulary if that subset
+// is empty. Returns candidates sorted best-first.
+function rankCandidates(guess: string, vocabulary: VocabWord[]): Ranked[] {
+  if (!guess) return [];
   const sameStart = vocabulary.filter((w) => w.word[0] === guess[0]);
-  const primary = sameStart.length > 0 ? nearest(guess, sameStart) : null;
-  const match = primary ?? nearest(guess, vocabulary);
-  if (!match) return null;
+  const pool = sameStart.length > 0 ? sameStart : vocabulary;
 
-  const maxAllowed = Math.max(1, guess.length * 0.4);
-  return match.dist <= maxAllowed ? match.word : null;
+  const ranked = pool.map((candidate) => {
+    const dist = editDistance(guess, candidate.word);
+    return { word: candidate.word, dist, score: scoreOf(dist, candidate.count) };
+  });
+  ranked.sort((a, b) => a.score - b.score);
+  return ranked;
 }
 
-// Guesses the Gurmukhi phrase a roman-typed query means, word by word,
-// snapping each word to the closest real word actually used in the Guru
-// Granth Sahib text (per the researcher spreadsheets) rather than trusting
-// the phonetic guess verbatim -- so "satnaam" finds "ਸਤਿਨਾਮੁ" (how it's
-// actually spelled in the text) instead of the literal "ਸਤਨਾਮ" a naive
-// letter-by-letter reading would produce. Returns null if the query has no
-// roman letters, or if nothing changed.
-export function suggestGurmukhi(rawQuery: string): string | null {
+type TokenMatch = { word: string; dist: number; runnerUp: string | null };
+
+// Best (and, if reasonably close, second-best) real-word match for a single
+// roman token. Rejects matches that are still too different to plausibly be
+// what was meant (longer words tolerate more edits than short ones) and
+// falls back to the raw phonetic guess in that case, with dist left at
+// Infinity so callers can tell nothing in the vocabulary was close.
+function matchToken(token: string, vocabulary: VocabWord[]): TokenMatch {
+  if (!LATIN_RE.test(token)) return { word: token, dist: 0, runnerUp: null };
+
+  const guess = transliteratePhonetic(token);
+  const ranked = rankCandidates(guess, vocabulary);
+  const maxAllowed = Math.max(1, guess.length * 0.4);
+  const best = ranked[0];
+  if (!best || best.dist > maxAllowed) return { word: guess, dist: Infinity, runnerUp: null };
+
+  const runnerUp = ranked.find((r) => r.word !== best.word && r.dist <= maxAllowed) ?? null;
+  return { word: best.word, dist: best.dist, runnerUp: runnerUp?.word ?? null };
+}
+
+export type SuggestResult = {
+  // Best overall interpretation -- what gets searched and shown as
+  // "Showing results for".
+  primary: string;
+  // True only if every word in `primary` is an exact vocabulary match (or
+  // wasn't a roman word to begin with) -- drives "Did you mean" vs a plain
+  // confident "Showing results for" in the UI.
+  exact: boolean;
+  // Other plausible whole-phrase readings worth searching alongside
+  // `primary` (e.g. a close second-best word, or the alternate of
+  // collapsing/splitting on spaces) -- deliberately kept short.
+  alternates: string[];
+};
+
+// Guesses the Gurmukhi phrase a roman-typed query means, snapping each word
+// to the closest real word actually used in the Guru Granth Sahib text
+// (per the researcher spreadsheets) rather than trusting the phonetic guess
+// verbatim -- so "satnaam" finds "ਸਤਿਨਾਮੁ" (how it's actually spelled)
+// instead of the literal "ਸਤਨਾਮ" a naive letter-by-letter reading would
+// produce. Returns null if the query has no roman letters.
+export function suggestGurmukhi(rawQuery: string): SuggestResult | null {
   if (!LATIN_RE.test(rawQuery)) return null;
 
   const ikOnkar = matchIkOnkar(rawQuery);
-  if (ikOnkar) return ikOnkar;
+  if (ikOnkar) return { primary: ikOnkar, exact: true, alternates: [] };
 
   const vocabulary = getVocabulary();
-  const tokens = rawQuery.trim().split(/\s+/);
-  const corrected = tokens.map((token) => {
-    if (!LATIN_RE.test(token)) return token;
-    const guess = transliteratePhonetic(token);
-    return closestWord(guess, vocabulary) ?? guess;
-  });
+  const trimmed = rawQuery.trim();
+  const tokens = trimmed.split(/\s+/);
 
-  const result = corrected.join(" ");
-  return result !== rawQuery.trim() ? result : null;
+  const perWord = tokens.map((token) => matchToken(token, vocabulary));
+  const splitPrimary = perWord.map((m) => m.word).join(" ");
+  const splitScore = perWord.reduce((sum, m) => sum + (Number.isFinite(m.dist) ? m.dist : m.word.length), 0);
+  const splitExact = perWord.every((m) => m.dist === 0);
+
+  // Multi-word input is often one compound word in the real text (e.g.
+  // "wahe guru" / "sat naam" -> ਵਾਹਿਗੁਰੂ / ਸਤਿਨਾਮੁ are written with no
+  // space), so also try reading the whole query as a single token and use
+  // whichever reading is the stronger match.
+  const collapsedToken = tokens.length > 1 ? tokens.join("") : null;
+  const collapsedMatch = collapsedToken ? matchToken(collapsedToken, vocabulary) : null;
+
+  let primary: string;
+  let exact: boolean;
+  const alternates = new Set<string>();
+
+  // Two short roman words typed adjacently (e.g. "wahe guru", "sat naam")
+  // are overwhelmingly meant as one compound devotional term rather than
+  // two genuinely separate words -- prefer the collapsed reading whenever
+  // it's an accepted match at all, even if the split reading happens to be
+  // "exact" per word (each half being its own valid but unrelated word is
+  // what makes the split misleadingly confident here).
+  const looksLikeSplitCompound =
+    tokens.length === 2 && tokens.every((t) => t.length <= 6) && collapsedMatch !== null && Number.isFinite(collapsedMatch.dist);
+
+  if (collapsedMatch && (collapsedMatch.dist < splitScore || looksLikeSplitCompound)) {
+    primary = collapsedMatch.word;
+    exact = collapsedMatch.dist === 0;
+    if (splitPrimary !== primary) alternates.add(splitPrimary);
+  } else {
+    primary = splitPrimary;
+    exact = splitExact;
+    if (collapsedMatch && collapsedMatch.word !== primary) alternates.add(collapsedMatch.word);
+  }
+
+  // A close runner-up on a single-word query is a real alternate reading
+  // worth searching too (e.g. "satnam" ties between ਸੰਤਨ and ਸਤਿਨਾਮੁ).
+  if (perWord.length === 1 && perWord[0].runnerUp && perWord[0].runnerUp !== primary) {
+    alternates.add(perWord[0].runnerUp);
+  }
+
+  if (primary === trimmed && alternates.size === 0) return null;
+  return { primary, exact, alternates: [...alternates].slice(0, 2) };
 }

@@ -86,12 +86,21 @@ function escapeFtsPhrase(raw: string): string {
   return raw.trim().replace(/"/g, '""');
 }
 
-export function searchByPhrase(query: string, researcherIds: number[] | null): VerseResult[] {
-  const escaped = escapeFtsPhrase(query);
-  if (!escaped) return [];
+// Accepts multiple candidate phrasings (e.g. a fuzzy-matched primary guess
+// plus one or two alternates) and searches for any of them at once, so an
+// ambiguous roman query like "satnam" -- which could plausibly mean either
+// of two real words -- returns verses matching either, rather than
+// committing to a single guess and possibly missing the intended one.
+export function searchByPhrase(queries: string | string[], researcherIds: number[] | null): VerseResult[] {
+  const candidates = Array.isArray(queries) ? queries : [queries];
+  const matchExpr = candidates
+    .map((q) => escapeFtsPhrase(q))
+    .filter(Boolean)
+    .map((q) => `"${q}"*`)
+    .join(" OR ");
+  if (!matchExpr) return [];
 
   const db = getDb();
-  const matchExpr = `"${escaped}"*`;
 
   // Pick the most relevant matches by bm25 rank first, then display that
   // set in page order (1-1430) rather than by relevance.

@@ -27,12 +27,17 @@ export async function GET(request: NextRequest) {
       // If the query was typed in roman letters, guess what Gurmukhi it
       // means by snapping each word to the closest real word in the text
       // (e.g. "satnam" -> "ਸਤਿਨਾਮੁ", how it's actually spelled), rather than
-      // trusting a naive letter-by-letter reading -- then search with that.
-      const interpreted = suggestGurmukhi(q);
-      const searchQuery = interpreted ?? q;
+      // trusting a naive letter-by-literal reading. When the guess isn't an
+      // exact vocabulary match, search it alongside its next-best
+      // alternate(s) too, so an ambiguous query still surfaces the verse
+      // the user actually meant even if it wasn't the top guess.
+      const suggestion = suggestGurmukhi(q);
+      const candidates = suggestion ? [suggestion.primary, ...suggestion.alternates] : [q];
       return NextResponse.json({
-        results: searchByPhrase(searchQuery, researcherIds),
-        interpretedQuery: interpreted,
+        results: searchByPhrase(candidates, researcherIds),
+        interpretedQuery: suggestion?.primary ?? null,
+        exact: suggestion?.exact ?? true,
+        alternateQuery: suggestion?.alternates[0] ?? null,
       });
     }
     case "initials": {

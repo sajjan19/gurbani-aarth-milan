@@ -66,10 +66,8 @@ const ENTRIES: { roman: string; gurmukhi: string }[] = [
 ];
 
 const ROMAN_TO_GURMUKHI: Record<string, string> = {};
-const GURMUKHI_TO_ROMAN: Record<string, string> = {};
 for (const { roman, gurmukhi } of ENTRIES) {
   ROMAN_TO_GURMUKHI[roman] = gurmukhi;
-  GURMUKHI_TO_ROMAN[gurmukhi] = roman;
 }
 
 // Looks up a single typed character; returns the Gurmukhi character it
@@ -77,12 +75,6 @@ for (const { roman, gurmukhi } of ENTRIES) {
 // pass through untouched, e.g. digits for page-number search).
 export function gurmukhiForRoman(char: string): string | undefined {
   return ROMAN_TO_GURMUKHI[char];
-}
-
-// For the virtual keyboard: which roman letter produces a given Gurmukhi
-// character (the exact inverse of gurmukhiForRoman, since the map is 1:1).
-export function romanLabelFor(gurmukhiChar: string): string | undefined {
-  return GURMUKHI_TO_ROMAN[gurmukhiChar];
 }
 
 // For "first letters" search: each typed roman letter is the first letter
@@ -179,6 +171,17 @@ export function transliteratePhonetic(input: string): string {
     if (!/[A-Za-z]/.test(ch)) {
       result += ch;
       afterConsonant = false;
+      i += 1;
+      continue;
+    }
+
+    // Subjoined ਰ (rakar): a consonant immediately followed by "r" with no
+    // vowel between them (e.g. "prem", "krishna", "sri") is a conjunct in
+    // Gurmukhi -- ਪ੍ਰੇਮ, ਕ੍ਰਿਸ਼ਨ, ਸ੍ਰੀ -- not two separate letters each with
+    // their own inherent vowel (which would misread "sri" as ਸਰਿ).
+    if (afterConsonant && ch === "r") {
+      result += "੍ਰ";
+      afterConsonant = true;
       i += 1;
       continue;
     }
