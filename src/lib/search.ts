@@ -150,3 +150,37 @@ export function searchByInitials(initials: string, researcherIds: number[] | nul
 
   return attachTranslations(rows, researcherIds);
 }
+
+export type PhraseSuggestion = { phrase: string; count: number };
+
+function escapeLikePrefix(raw: string): string {
+  return raw.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+// Verses whose phrase text starts with `prefix`, for autocomplete -- reads
+// only the phrase column directly (no FTS, no join to translations or
+// researchers), grouped by distinct phrase text so a refrain repeated
+// across many pages (e.g. "ੴ ਸਤਿਗੁਰ ਪ੍ਰਸਾਦਿ ॥") counts as one suggestion.
+// Ordered by how often that exact phrase recurs -- the closest signal to
+// "popularity" available without real usage/click data -- then shorter
+// (more likely to be the intended completion) first.
+export function searchPhrasesByPrefix(prefix: string, limit: number): PhraseSuggestion[] {
+  const trimmed = prefix.trim();
+  if (!trimmed) return [];
+
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `
+      SELECT phrase, COUNT(*) as count
+      FROM verses
+      WHERE phrase LIKE ? ESCAPE '\\'
+      GROUP BY phrase
+      ORDER BY count DESC, LENGTH(phrase) ASC
+      LIMIT ?
+      `
+    )
+    .all(`${escapeLikePrefix(trimmed)}%`, limit) as PhraseSuggestion[];
+
+  return rows;
+}

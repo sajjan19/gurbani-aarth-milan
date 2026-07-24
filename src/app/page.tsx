@@ -140,6 +140,11 @@ export default function Home() {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [suggestionExact, setSuggestionExact] = useState(true);
   const [alternateQuery, setAlternateQuery] = useState<string | null>(null);
+  // Live "as you type" completions (Word/Phrase mode only), sourced only
+  // from the phrase column -- see /api/autocomplete.
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<string[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -159,6 +164,34 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showFilterModal]);
+
+  // Debounced live autocomplete, Word/Phrase mode only. The abort/clear in
+  // the cleanup means only the latest keystroke's request can ever resolve
+  // -- typing quickly never lets a stale, slower response overwrite a
+  // newer one.
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      if (mode !== "phrase" || !query.trim()) {
+        setAutocompleteSuggestions([]);
+        return;
+      }
+      try {
+        const params = new URLSearchParams({ q: query.trim() });
+        const res = await fetch(`/api/autocomplete?${params}`, { signal: controller.signal });
+        const data = await res.json();
+        setAutocompleteSuggestions(data.suggestions ?? []);
+        setActiveSuggestionIndex(-1);
+      } catch {
+        // Aborted (superseded by newer typing) or a transient network
+        // error -- autocomplete is a non-critical nicety, fail silently.
+      }
+    }, 200);
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [query, mode]);
 
   const punjabiResearchers = useMemo(
     () => researchers.filter((r) => r.language === "pa"),
@@ -278,7 +311,31 @@ export default function Home() {
 
   function runSearch(e?: React.FormEvent) {
     e?.preventDefault();
+    setShowAutocomplete(false);
     performSearch(mode, query);
+  }
+
+  function selectAutocompleteSuggestion(text: string) {
+    setQuery(text);
+    setShowAutocomplete(false);
+    setAutocompleteSuggestions([]);
+    performSearch(mode, text);
+  }
+
+  function handleSearchInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!showAutocomplete || autocompleteSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveSuggestionIndex((i) => Math.min(i + 1, autocompleteSuggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveSuggestionIndex((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter" && activeSuggestionIndex >= 0) {
+      e.preventDefault();
+      selectAutocompleteSuggestion(autocompleteSuggestions[activeSuggestionIndex]);
+    } else if (e.key === "Escape") {
+      setShowAutocomplete(false);
+    }
   }
 
   function goToPage(page: number) {
@@ -327,34 +384,69 @@ export default function Home() {
         </div>
 
         <form className="search-form" onSubmit={runSearch}>
-          <div className="search-bar">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={MODE_PLACEHOLDERS[mode]}
-              className="search-input"
-              autoComplete="off"
-            />
-            <button
-              type="button"
-              className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
-              onClick={() => setShowKeyboard((v) => !v)}
-              aria-label="Toggle Gurmukhi keyboard"
-              title="Toggle Gurmukhi keyboard"
-            >
-              <KeyboardIcon />
-            </button>
-            <button
-              type="submit"
-              className="search-button"
-              disabled={loading}
-              aria-label="Search"
-              title="Search"
-            >
-              <SearchIcon />
-            </button>
+          <div className="search-bar-wrapper">
+            <div className="search-bar">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setShowAutocomplete(true);
+                }}
+                onKeyDown={handleSearchInputKeyDown}
+                onFocus={() => setShowAutocomplete(true)}
+                onBlur={() => {
+                  // Let a suggestion's onMouseDown (which prevents the
+                  // default focus-shift) run first; this is a fallback for
+                  // any blur not caused by clicking a suggestion.
+                  window.setTimeout(() => setShowAutocomplete(false), 100);
+                }}
+                placeholder={MODE_PLACEHOLDERS[mode]}
+                className="search-input"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showAutocomplete && autocompleteSuggestions.length > 0}
+                aria-autocomplete="list"
+                aria-controls="autocomplete-listbox"
+              />
+              <button
+                type="button"
+                className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
+                onClick={() => setShowKeyboard((v) => !v)}
+                aria-label="Toggle Gurmukhi keyboard"
+                title="Toggle Gurmukhi keyboard"
+              >
+                <KeyboardIcon />
+              </button>
+              <button
+                type="submit"
+                className="search-button"
+                disabled={loading}
+                aria-label="Search"
+                title="Search"
+              >
+                <SearchIcon />
+              </button>
+            </div>
+
+            {mode === "phrase" && showAutocomplete && autocompleteSuggestions.length > 0 && (
+              <ul id="autocomplete-listbox" role="listbox" className="autocomplete-dropdown">
+                {autocompleteSuggestions.map((s, i) => (
+                  <li
+                    key={s}
+                    role="option"
+                    aria-selected={i === activeSuggestionIndex}
+                    className={i === activeSuggestionIndex ? "autocomplete-item active" : "autocomplete-item"}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiveSuggestionIndex(i)}
+                    onClick={() => selectAutocompleteSuggestion(s)}
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </form>
 

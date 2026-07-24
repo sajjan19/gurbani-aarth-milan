@@ -216,3 +216,87 @@ export function suggestGurmukhi(rawQuery: string): SuggestResult | null {
   if (primary === trimmed && alternates.size === 0) return null;
   return { primary, exact, alternates: [...alternates].slice(0, 2) };
 }
+
+// Real vocabulary words that plausibly complete `prefix` -- the phonetic
+// reading of a word the user is still in the middle of typing (e.g.
+// "waheg" -> ਵਹੇਗ). An exact prefix match scores as a perfect (zero-cost)
+// candidate, but isn't treated as automatically better than every fuzzy
+// one: a word that only differs from the naive reading by a vowel length
+// (e.g. "tu" reads as ਤੁ, one matra short of the far more common ਤੂ) is
+// still a near-perfect match, and if it's used far more often it should
+// win the same way frequency wins close calls everywhere else in this
+// module. Only words at least as long as the prefix are eligible, since a
+// shorter word can't be completed by more typing. This is also what
+// naturally surfaces multiple spellings for an ambiguous prefix, e.g.
+// "gobin" -> both ਗੋਬਿੰਦ and ਗੋਵਿੰਦ.
+// A prefix is usually just 2-4 characters, where a single matra-level
+// difference (like ਤੁ vs the far more common ਤੂ) is a much bigger fraction
+// of what's typed than the same gap would be on a full word -- so
+// frequency needs more say here than FREQUENCY_WEIGHT gives it elsewhere,
+// or an extremely common short word never surfaces over a rarer one that
+// merely happens to share its exact first few letters.
+const PREFIX_FREQUENCY_WEIGHT = 0.5;
+
+function prefixScoreOf(dist: number, count: number): number {
+  return dist - PREFIX_FREQUENCY_WEIGHT * Math.log2(count + 1);
+}
+
+export function matchPrefix(prefix: string, limit: number): string[] {
+  if (!prefix) return [];
+  const vocabulary = getVocabulary();
+
+  const candidates = vocabulary.filter((w) => w.word.length >= prefix.length);
+  const sameStart = candidates.filter((w) => w.word[0] === prefix[0]);
+  const pool = sameStart.length > 0 ? sameStart : candidates;
+  const maxAllowed = Math.max(1, prefix.length * 0.4);
+
+  const ranked = pool
+    .map((w) => {
+      const dist = w.word.startsWith(prefix) ? 0 : editDistance(prefix, w.word.slice(0, prefix.length));
+      return { word: w.word, dist, score: prefixScoreOf(dist, w.count) };
+    })
+    .filter((r) => r.dist === 0 || r.dist <= maxAllowed)
+    .sort((a, b) => a.score - b.score);
+
+  const seen = new Set<string>();
+  const results: string[] = [];
+  for (const r of ranked) {
+    if (seen.has(r.word)) continue;
+    seen.add(r.word);
+    results.push(r.word);
+    if (results.length >= limit) break;
+  }
+  return results;
+}
+
+// Ranked whole-query candidates for autocomplete: every word but the last
+// is corrected as a complete word (same as suggestGurmukhi), and the last
+// (possibly still-being-typed) word is prefix-matched via matchPrefix --
+// so multiple plausible completions of the last word (e.g. "gobin" ->
+// ਗੋਬਿੰਦ / ਗੋਵਿੰਦ) become multiple whole-query anchors, each one then used
+// to search for real verses starting with it.
+export function suggestAutocompleteAnchors(rawQuery: string, limit: number): string[] {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) return [];
+
+  const ikOnkar = matchIkOnkar(trimmed);
+  if (ikOnkar) return [ikOnkar];
+
+  const vocabulary = getVocabulary();
+  const tokens = trimmed.split(/\s+/);
+  const head = tokens.slice(0, -1);
+  const lastRaw = tokens[tokens.length - 1];
+
+  const correctedHead = head.map((t) => (LATIN_RE.test(t) ? matchToken(t, vocabulary).word : t));
+
+  let lastCandidates: string[];
+  if (!LATIN_RE.test(lastRaw)) {
+    lastCandidates = [lastRaw];
+  } else {
+    const phonetic = transliteratePhonetic(lastRaw);
+    lastCandidates = matchPrefix(phonetic, limit);
+    if (lastCandidates.length === 0) lastCandidates = [phonetic];
+  }
+
+  return lastCandidates.map((w) => [...correctedHead, w].join(" "));
+}
