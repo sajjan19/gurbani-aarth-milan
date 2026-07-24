@@ -240,13 +240,27 @@ export default function Home() {
     });
   }
 
+  // Setting the query to empty (typing it away, Backspace, or the keyboard
+  // panel's Clear button) should clear whatever's on screen too, rather
+  // than leaving the previous search's results up until the next submit.
+  function setQueryAndSync(next: string) {
+    setQuery(next);
+    if (!next.trim()) {
+      setResults(null);
+      setError(null);
+      setViewedPage(null);
+      setSuggestion(null);
+      setAlternateQuery(null);
+    }
+  }
+
   function insertAtCursor(char: string) {
     const input = searchInputRef.current;
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start + char.length;
     const next = query.slice(0, start) + char + query.slice(end);
-    setQuery(next);
+    setQueryAndSync(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -262,7 +276,7 @@ export default function Home() {
       start === end
         ? query.slice(0, Math.max(0, start - 1)) + query.slice(end)
         : query.slice(0, start) + query.slice(end);
-    setQuery(next);
+    setQueryAndSync(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -410,7 +424,7 @@ export default function Home() {
                 type="text"
                 value={query}
                 onChange={(e) => {
-                  setQuery(e.target.value);
+                  setQueryAndSync(e.target.value);
                   setShowAutocomplete(true);
                 }}
                 onKeyDown={handleSearchInputKeyDown}
@@ -499,7 +513,7 @@ export default function Home() {
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
               ⌫ Backspace
             </button>
-            <button type="button" className="keyboard-key special" onClick={() => setQuery("")}>
+            <button type="button" className="keyboard-key special" onClick={() => setQueryAndSync("")}>
               Clear
             </button>
           </div>
