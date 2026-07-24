@@ -146,6 +146,24 @@ export default function Home() {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const keyboardPanelRef = useRef<HTMLDivElement>(null);
+  const keyboardToggleRef = useRef<HTMLButtonElement>(null);
+
+  // Clicking anywhere outside the virtual keyboard closes it -- the panel
+  // itself and its own toggle button are the only exceptions (otherwise
+  // clicking the toggle to close it would immediately reopen it, since
+  // this fires on mousedown, before the toggle's own click handler runs).
+  useEffect(() => {
+    if (!showKeyboard) return;
+    function handlePointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (keyboardPanelRef.current?.contains(target)) return;
+      if (keyboardToggleRef.current?.contains(target)) return;
+      setShowKeyboard(false);
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [showKeyboard]);
 
   useEffect(() => {
     fetch("/api/researchers")
@@ -312,6 +330,7 @@ export default function Home() {
   function runSearch(e?: React.FormEvent) {
     e?.preventDefault();
     setShowAutocomplete(false);
+    setShowKeyboard(false);
     performSearch(mode, query);
   }
 
@@ -411,6 +430,7 @@ export default function Home() {
                 aria-controls="autocomplete-listbox"
               />
               <button
+                ref={keyboardToggleRef}
                 type="button"
                 className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
                 onClick={() => setShowKeyboard((v) => !v)}
@@ -474,7 +494,7 @@ export default function Home() {
       </div>
 
       {showKeyboard && (
-        <div className="gurmukhi-keyboard">
+        <div className="gurmukhi-keyboard" ref={keyboardPanelRef}>
           <div className="keyboard-controls">
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
               ⌫ Backspace
