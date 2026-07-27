@@ -78,15 +78,18 @@ export default async function HukamnamaPage() {
 
   return (
     <main className="page">
-      <h1>Hukamnama</h1>
+      <h1>Daily Hukamnama</h1>
 
       {!data ? (
         <p className="error">Could not load today&apos;s Hukamnama right now. Please try again later.</p>
       ) : (
         <>
-          <p className="hukamnama-meta">
+          <p className="hukamnama-date">
             {data.date.gregorian.day}, {data.date.gregorian.month} {data.date.gregorian.date},{" "}
-            {data.date.gregorian.year} — Ang {data.hukamnamainfo.pageno}
+            {data.date.gregorian.year}
+          </p>
+          <p className="hukamnama-meta">
+            Ang {data.hukamnamainfo.pageno}
             {data.hukamnamainfo.writer && ` · ${data.hukamnamainfo.writer.unicode}`}
             {data.hukamnamainfo.raag && ` · ${data.hukamnamainfo.raag.unicode}`}
           </p>

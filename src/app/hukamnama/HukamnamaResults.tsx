@@ -174,6 +174,18 @@ export default function HukamnamaResults({
           );
         })}
       </div>
+
+      {verses.length > 0 && (
+        <div className="page-nav page-nav-bottom">
+          <button
+            type="button"
+            className="page-nav-top"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            ↑ Return to top
+          </button>
+        </div>
+      )}
     </>
   );
 }
