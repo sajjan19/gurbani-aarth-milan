@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-const CONTACT_EMAIL = "mandeeps@gurunanakinstitute.ca";
-
 type Status = "idle" | "sending" | "sent" | "error";
 
 export default function ContactPage() {
@@ -50,11 +48,6 @@ export default function ContactPage() {
   return (
     <main className="page">
       <h1>Contact Us</h1>
-      <p className="subtitle">Questions, corrections, or feedback — we'd like to hear it.</p>
-
-      <p className="contact-email">
-        Email us directly at <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-      </p>
 
       {status === "sent" && sent ? (
         <div className="contact-confirmation">

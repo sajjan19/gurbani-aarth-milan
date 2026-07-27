@@ -98,8 +98,8 @@ function matraKeys(chars: string[]): KeyboardKey[] {
 }
 
 // One flat, ordered list (vowel bearers + consonants + nukta letters, then
-// vowel signs/diacritics, then numerals/symbols) rendered as a fixed-width
-// grid, so every row holds the same number of keys.
+// vowel signs/diacritics, then symbols) rendered as a fixed-width grid, so
+// every row holds the same number of keys.
 const GURMUKHI_KEYS: KeyboardKey[] = [
   ...letterKeys([
     "ੳ", "ਅ", "ੲ", "ਸ", "ਹ", "ਕ", "ਖ", "ਗ", "ਘ", "ਙ",
@@ -108,7 +108,7 @@ const GURMUKHI_KEYS: KeyboardKey[] = [
     "ਯ", "ਰ", "ਲ", "ਵ", "ੜ", "ਲ਼", "ਸ਼", "ਖ਼", "ਗ਼", "ਜ਼", "ਫ਼",
   ]),
   ...matraKeys(["ਾ", "ਿ", "ੀ", "ੁ", "ੂ", "ੇ", "ੈ", "ੋ", "ੌ", "ਂ", "ਃ", "ੰ", "ੱ", "਼", "੍"]),
-  ...letterKeys(["੦", "੧", "੨", "੩", "੪", "੫", "੬", "੭", "੮", "੯", "ੴ", "॥"]),
+  ...letterKeys(["॥", "ੴ"]),
 ];
 
 const KEYBOARD_COLUMNS = 10;

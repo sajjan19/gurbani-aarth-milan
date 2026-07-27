@@ -146,6 +146,22 @@ a {
   margin-bottom: 1.5rem;
 }
 
+.hukamnama-meta {
+  color: var(--blue);
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+.hukamnama-attribution {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.hukamnama-attribution a {
+  color: var(--blue);
+}
+
 .mode-tabs {
   display: flex;
   flex-wrap: wrap;

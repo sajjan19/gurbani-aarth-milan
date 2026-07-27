@@ -184,3 +184,67 @@ export function searchPhrasesByPrefix(prefix: string, limit: number): PhraseSugg
 
   return rows;
 }
+
+// Punctuation/verse-number marks that can differ between our phrase text
+// and an external source's rendering of the same line (e.g. a trailing
+// danda present in one but not the other) without the underlying line
+// actually being different -- stripped before comparing.
+function normalizeForPhraseMatch(s: string): string {
+  return s.replace(/[॥੦-੯]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  let prev = new Array<number>(n + 1);
+  let curr = new Array<number>(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+// Finds the verse on `page` whose phrase text most closely matches
+// `targetPhrase` (from an external source, e.g. a Hukamnama API, whose
+// exact text can differ from ours in trailing punctuation or an occasional
+// word-level spelling) and returns it with our own researcher translations
+// attached -- for stitching external Gurbani text back to our own dataset's
+// translations rather than trusting whatever came with it. Returns null if
+// nothing on the page is a close enough match.
+export function matchVerseByPhrase(
+  page: number,
+  targetPhrase: string,
+  researcherIds: number[] | null
+): VerseResult | null {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id, page, verse, line, phrase FROM verses WHERE page = ?")
+    .all(page) as Omit<VerseResult, "translations">[];
+  if (rows.length === 0) return null;
+
+  const target = normalizeForPhraseMatch(targetPhrase);
+  let best: Omit<VerseResult, "translations"> | null = null;
+  let bestDist = Infinity;
+  for (const row of rows) {
+    const dist = levenshtein(target, normalizeForPhraseMatch(row.phrase));
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = row;
+    }
+  }
+
+  const maxAllowed = Math.max(3, target.length * 0.35);
+  if (!best || bestDist > maxAllowed) return null;
+
+  return attachTranslations([best], researcherIds)[0];
+}

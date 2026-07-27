@@ -8,6 +8,7 @@ export default function SiteHeader() {
       </Link>
       <nav className="site-nav">
         <Link href="/">Search</Link>
+        <Link href="/hukamnama">Hukamnama</Link>
         <Link href="/about">About</Link>
         <Link href="/contact">Contact</Link>
       </nav>
