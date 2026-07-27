@@ -648,6 +648,7 @@ a {
 }
 
 .verse-meta {
+  display: block;
   font-size: 0.8rem;
   color: var(--orange);
   font-weight: 600;
@@ -655,8 +656,68 @@ a {
 }
 
 .verse-phrase {
+  display: block;
   font-size: 1.3rem;
   margin-bottom: 0.75rem;
+}
+
+/* Collapsible search result: the whole header row is one big button, so
+   the padding lives on the button rather than the card (otherwise the
+   clickable area would stop short of the card edges). Scoped to
+   .accordion so the plain .verse-card used elsewhere keeps its padding. */
+.verse-card.accordion {
+  padding: 0;
+  overflow: hidden;
+}
+
+.verse-toggle {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.verse-toggle:hover {
+  background: var(--blue-light);
+}
+
+.verse-toggle-text {
+  min-width: 0;
+}
+
+.verse-toggle .verse-phrase {
+  margin-bottom: 0;
+}
+
+.verse-chevron {
+  flex-shrink: 0;
+  color: var(--blue);
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.verse-chevron.open {
+  transform: rotate(180deg);
+}
+
+.verse-translations {
+  padding: 0 1.25rem 1rem;
+}
+
+.verse-highlight {
+  background: color-mix(in srgb, var(--orange) 32%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.08em;
 }
 
 .no-translations {

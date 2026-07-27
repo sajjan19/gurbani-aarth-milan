@@ -14,6 +14,10 @@ export default function HukamnamaResults({
     () => new Set(researchers.map((r) => r.id))
   );
   const [showFilterModal, setShowFilterModal] = useState(false);
+  // Verse ids whose translations are expanded -- the reading lists only the
+  // Gurmukhi lines by default, same as search results. Each line toggles
+  // independently so several can be compared at once.
+  const [expandedVerseIds, setExpandedVerseIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!showFilterModal) return;
@@ -43,6 +47,15 @@ export default function HukamnamaResults({
         if (selectAll) next.add(id);
         else next.delete(id);
       }
+      return next;
+    });
+  }
+
+  function toggleVerseExpanded(id: number) {
+    setExpandedVerseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -156,19 +169,38 @@ export default function HukamnamaResults({
       <div className="results">
         {verses.map((v) => {
           const visibleTranslations = v.translations.filter((t) => selectedIds.has(t.researcherId));
+          const expanded = expandedVerseIds.has(v.id);
           return (
-            <article key={v.id} className="verse-card">
-              <p className="verse-phrase">{v.phrase}</p>
-              {visibleTranslations.length === 0 ? (
-                <p className="no-translations">No translations selected for this verse.</p>
-              ) : (
-                <ul className="translation-list">
-                  {visibleTranslations.map((t) => (
-                    <li key={t.researcherId}>
-                      <span className="translation-source">{t.displayName}:</span> {t.text}
-                    </li>
-                  ))}
-                </ul>
+            <article key={v.id} className="verse-card accordion">
+              <button
+                type="button"
+                className="verse-toggle"
+                onClick={() => toggleVerseExpanded(v.id)}
+                aria-expanded={expanded}
+                aria-controls={`hukamnama-translations-${v.id}`}
+              >
+                <span className="verse-toggle-text">
+                  <span className="verse-phrase">{v.phrase}</span>
+                </span>
+                <span className={expanded ? "verse-chevron open" : "verse-chevron"} aria-hidden="true">
+                  ⌄
+                </span>
+              </button>
+
+              {expanded && (
+                <div id={`hukamnama-translations-${v.id}`} className="verse-translations">
+                  {visibleTranslations.length === 0 ? (
+                    <p className="no-translations">No translations selected for this verse.</p>
+                  ) : (
+                    <ul className="translation-list">
+                      {visibleTranslations.map((t) => (
+                        <li key={t.researcherId}>
+                          <span className="translation-source">{t.displayName}:</span> {t.text}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </article>
           );

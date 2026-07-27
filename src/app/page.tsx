@@ -118,6 +118,38 @@ const KEYBOARD_PADDING =
 // The Guru Granth Sahib has 1430 pages (Angs).
 const MAX_PAGE = 1430;
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Wraps every occurrence of the searched term(s) in the verse text so the
+// match is visible at a glance. Plain substring matching is enough here:
+// the search itself is a prefix match on whole words, so the term always
+// shows up verbatim at the start of some word -- and matching a substring
+// also nicely highlights just the "ਗੋਬਿੰਦ" part of a longer "ਗੋਬਿੰਦੁ".
+function highlightMatches(text: string, terms: string[]): React.ReactNode {
+  const usable = terms.filter((t) => t.trim().length > 0);
+  if (usable.length === 0) return text;
+
+  // Longest first so a longer term wins wherever two candidates overlap.
+  const pattern = [...usable]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join("|");
+
+  // One capture group means split() interleaves the matches at odd indices.
+  const parts = text.split(new RegExp(`(${pattern})`, "g"));
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <mark key={i} className="verse-highlight">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
+
 export default function Home() {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -140,6 +172,15 @@ export default function Home() {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [suggestionExact, setSuggestionExact] = useState(true);
   const [alternateQuery, setAlternateQuery] = useState<string | null>(null);
+  // Verse ids whose translations are expanded. Results list only the
+  // phrase by default; clicking one opens its translations. Each card
+  // toggles independently rather than closing the others, since comparing
+  // two verses' translations side by side is the point of the tool.
+  const [expandedVerseIds, setExpandedVerseIds] = useState<Set<number>>(new Set());
+  // The Gurmukhi term(s) actually searched for, kept so matches can be
+  // highlighted in the results. Captured at search time rather than read
+  // from `query`, which keeps changing as the user types afterwards.
+  const [highlightTerms, setHighlightTerms] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const keyboardPanelRef = useRef<HTMLDivElement>(null);
   const keyboardToggleRef = useRef<HTMLButtonElement>(null);
@@ -207,6 +248,15 @@ export default function Home() {
     });
   }
 
+  function toggleVerseExpanded(id: number) {
+    setExpandedVerseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   // Setting the query to empty (typing it away, Backspace, or the keyboard
   // panel's Clear button) should clear whatever's on screen too, rather
   // than leaving the previous search's results up until the next submit.
@@ -218,6 +268,8 @@ export default function Home() {
       setViewedPage(null);
       setSuggestion(null);
       setAlternateQuery(null);
+      setExpandedVerseIds(new Set());
+      setHighlightTerms([]);
     }
   }
 
@@ -251,6 +303,10 @@ export default function Home() {
   }
 
   async function performSearch(searchMode: Mode, rawQuery: string) {
+    // Whatever was open belonged to the previous result set -- start the
+    // new one collapsed, and drop the old search's highlights.
+    setExpandedVerseIds(new Set());
+    setHighlightTerms([]);
     const trimmed = rawQuery.trim();
     if (!trimmed) {
       setResults(null);
@@ -297,6 +353,19 @@ export default function Home() {
         setSuggestion(data.interpretedQuery ?? null);
         setSuggestionExact(data.exact ?? true);
         setAlternateQuery(data.alternateQuery ?? null);
+        // Highlight what was actually searched: the Gurmukhi interpretation
+        // of roman input (or the raw query when it was already Gurmukhi),
+        // plus the alternate reading, since both were searched for.
+        // Skipped for the other modes -- a page number never appears in the
+        // verse text, and first-letter queries match across word initials
+        // rather than as a contiguous run.
+        setHighlightTerms(
+          searchMode === "phrase"
+            ? [data.interpretedQuery ?? trimmed, data.alternateQuery].filter(
+                (t): t is string => typeof t === "string" && t.length > 0
+              )
+            : []
+        );
       }
     } catch {
       setError("Search failed. Please try again.");
@@ -576,22 +645,41 @@ export default function Home() {
         {results !== null && results.length === 0 && !loading && <p>No matches found.</p>}
         {results?.map((v) => {
           const visibleTranslations = v.translations.filter((t) => selectedIds.has(t.researcherId));
+          const expanded = expandedVerseIds.has(v.id);
           return (
-            <article key={v.id} className="verse-card">
-              <div className="verse-meta">
-                Page {v.page}, Verse {v.verse}
-              </div>
-              <p className="verse-phrase">{v.phrase}</p>
-              {visibleTranslations.length === 0 ? (
-                <p className="no-translations">No translations selected for this verse.</p>
-              ) : (
-                <ul className="translation-list">
-                  {visibleTranslations.map((t) => (
-                    <li key={t.researcherId}>
-                      <span className="translation-source">{t.displayName}:</span> {t.text}
-                    </li>
-                  ))}
-                </ul>
+            <article key={v.id} className="verse-card accordion">
+              <button
+                type="button"
+                className="verse-toggle"
+                onClick={() => toggleVerseExpanded(v.id)}
+                aria-expanded={expanded}
+                aria-controls={`verse-translations-${v.id}`}
+              >
+                <span className="verse-toggle-text">
+                  <span className="verse-meta">
+                    Page {v.page}, Verse {v.verse}
+                  </span>
+                  <span className="verse-phrase">{highlightMatches(v.phrase, highlightTerms)}</span>
+                </span>
+                <span className={expanded ? "verse-chevron open" : "verse-chevron"} aria-hidden="true">
+                  ⌄
+                </span>
+              </button>
+
+              {expanded && (
+                <div id={`verse-translations-${v.id}`} className="verse-translations">
+                  {visibleTranslations.length === 0 ? (
+                    <p className="no-translations">No translations selected for this verse.</p>
+                  ) : (
+                    <ul className="translation-list">
+                      {visibleTranslations.map((t) => (
+                        <li key={t.researcherId}>
+                          <span className="translation-source">{t.displayName}:</span> {t.text}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
             </article>
           );
