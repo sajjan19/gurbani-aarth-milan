@@ -86,6 +86,53 @@ function escapeFtsPhrase(raw: string): string {
   return raw.trim().replace(/"/g, '""');
 }
 
+// Punctuation and verse numbers that hang off the ends of words in the
+// phrase text (e.g. "ਚੀਤ ॥੨॥") and shouldn't count as part of the word
+// when deciding whether a match is exact.
+const WORD_EDGE_PUNCT = /^[॥੦-੯.,;:!?"'()]+|[॥੦-੯.,;:!?"'()]+$/g;
+
+function phraseWords(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map((w) => w.replace(WORD_EDGE_PUNCT, ""))
+    .filter(Boolean);
+}
+
+// How closely a verse matches the term that was searched for, best first:
+//   0 - the term appears as a whole word ("ਗੋਬਿੰਦ" in "ਗੋਬਿੰਦ ਪੂਰਨ ਆਸ")
+//   1 - it appears as the start of a longer word ("ਗੋਬਿੰਦ" in "ਗੋਬਿੰਦੁ")
+//   2 - neither, so this verse only turned up via a fuzzy alternate
+// Multi-word terms follow the same rule the FTS query uses: every word but
+// the last must match exactly, and the last may be a prefix.
+const EXACT_WORD_MATCH = 0;
+const PREFIX_MATCH = 1;
+const ALTERNATE_ONLY_MATCH = 2;
+
+function phraseMatchTier(phrase: string, term: string): number {
+  const words = phraseWords(phrase);
+  const termWords = phraseWords(term);
+  if (termWords.length === 0) return ALTERNATE_ONLY_MATCH;
+
+  const lastTerm = termWords[termWords.length - 1];
+  let best = ALTERNATE_ONLY_MATCH;
+
+  for (let i = 0; i + termWords.length <= words.length; i++) {
+    let leadingWordsMatch = true;
+    for (let j = 0; j < termWords.length - 1; j++) {
+      if (words[i + j] !== termWords[j]) {
+        leadingWordsMatch = false;
+        break;
+      }
+    }
+    if (!leadingWordsMatch) continue;
+
+    const lastWord = words[i + termWords.length - 1];
+    if (lastWord === lastTerm) return EXACT_WORD_MATCH;
+    if (lastWord.startsWith(lastTerm)) best = PREFIX_MATCH;
+  }
+  return best;
+}
+
 // Accepts multiple candidate phrasings (e.g. a fuzzy-matched primary guess
 // plus one or two alternates) and searches for any of them at once, so an
 // ambiguous roman query like "satnam" -- which could plausibly mean either
@@ -93,39 +140,79 @@ function escapeFtsPhrase(raw: string): string {
 // committing to a single guess and possibly missing the intended one.
 export function searchByPhrase(queries: string | string[], researcherIds: number[] | null): VerseResult[] {
   const candidates = Array.isArray(queries) ? queries : [queries];
-  const matchExpr = candidates
-    .map((q) => escapeFtsPhrase(q))
-    .filter(Boolean)
-    .map((q) => `"${q}"*`)
-    .join(" OR ");
-  if (!matchExpr) return [];
+  const usable = candidates.filter((q) => q.trim().length > 0);
+  if (usable.length === 0) return [];
 
   const db = getDb();
+  const primary = usable[0];
+  const alternates = usable.slice(1);
 
-  // Pick the most relevant matches by bm25 rank first, then display that
-  // set in page order (1-1430) rather than by relevance.
-  const rows = db
-    .prepare(
-      `
-      SELECT * FROM (
-        SELECT v.id, v.page, v.verse, v.line, v.phrase, MIN(matched.rank) as rank
-        FROM (
-          SELECT verse_id, bm25(search_fts) as rank
-          FROM search_fts
-          WHERE text MATCH ? AND source_type = 'phrase'
-          LIMIT -1
-        ) matched
-        JOIN verses v ON v.id = matched.verse_id
-        GROUP BY v.id
-        ORDER BY rank ASC
-        LIMIT ?
-      )
-      ORDER BY page ASC, verse ASC
-      `
-    )
-    .all(matchExpr, MAX_RESULTS) as Omit<VerseResult, "translations">[];
+  // The primary reading is searched on its own and given the whole result
+  // budget first; alternates only fill what's left over. Searching them all
+  // as one OR'd query would let bm25 mix them freely, and a fuzzy alternate
+  // that happens to be rarer (so scores higher) could crowd genuine matches
+  // for what the user actually typed out of the results entirely.
+  const primaryRows = runPhraseQuery(db, [primary], MAX_RESULTS, []);
+  const remaining = MAX_RESULTS - primaryRows.length;
+  const alternateRows =
+    alternates.length > 0 && remaining > 0
+      ? runPhraseQuery(
+          db,
+          alternates,
+          remaining,
+          primaryRows.map((r) => r.id)
+        )
+      : [];
+  const rows = [...primaryRows, ...alternateRows];
+
+  // Order by how well each verse matches what was actually searched for --
+  // exact whole-word hits, then longer words starting with it, then verses
+  // that only turned up through a fuzzy alternate -- keeping page order
+  // (1-1430) within each group. The tier is computed here rather than in
+  // SQL because it needs word-boundary logic that FTS's prefix matching
+  // can't express.
+  const tiers = new Map(rows.map((r) => [r.id, phraseMatchTier(r.phrase, primary)]));
+  rows.sort((a, b) => {
+    const tierDiff = tiers.get(a.id)! - tiers.get(b.id)!;
+    if (tierDiff !== 0) return tierDiff;
+    if (a.page !== b.page) return a.page - b.page;
+    return a.verse - b.verse;
+  });
 
   return attachTranslations(rows, researcherIds);
+}
+
+// Most relevant verses (by bm25) whose phrase matches any of `terms`,
+// optionally skipping ids already claimed by an earlier, higher-priority
+// query.
+function runPhraseQuery(
+  db: ReturnType<typeof getDb>,
+  terms: string[],
+  limit: number,
+  excludeIds: number[]
+): Omit<VerseResult, "translations">[] {
+  const matchExpr = terms.map((t) => `"${escapeFtsPhrase(t)}"*`).join(" OR ");
+  const exclusion =
+    excludeIds.length > 0 ? `WHERE v.id NOT IN (${excludeIds.map(() => "?").join(",")})` : "";
+
+  return db
+    .prepare(
+      `
+      SELECT v.id, v.page, v.verse, v.line, v.phrase, MIN(matched.rank) as rank
+      FROM (
+        SELECT verse_id, bm25(search_fts) as rank
+        FROM search_fts
+        WHERE text MATCH ? AND source_type = 'phrase'
+        LIMIT -1
+      ) matched
+      JOIN verses v ON v.id = matched.verse_id
+      ${exclusion}
+      GROUP BY v.id
+      ORDER BY rank ASC
+      LIMIT ?
+      `
+    )
+    .all(matchExpr, ...excludeIds, limit) as Omit<VerseResult, "translations">[];
 }
 
 export function searchByPage(page: number, researcherIds: number[] | null): VerseResult[] {
