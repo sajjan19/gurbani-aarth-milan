@@ -6,10 +6,15 @@ export const metadata: Metadata = {
   title: "Hukamnama | Gurbani Aarth Milan",
 };
 
-// Today's Hukamnama doesn't change through the day, but re-checking hourly
-// keeps the page correct across the actual moment it's updated each
-// morning without hitting the upstream API on every request.
-export const revalidate = 3600;
+// Rendered fresh on every request rather than cached. A timed revalidate
+// is the usual choice, but it serves stale-while-revalidate: the first
+// visitor after the cache expires still gets the *previous* page while the
+// new one regenerates behind them. For a once-a-day reading that means the
+// first person each morning reliably sees yesterday's Hukamnama, which is
+// exactly the thing this page must never do. The upstream call is one
+// small JSON fetch and the verse matching is local, so paying it per
+// request is the right trade for always showing today's reading.
+export const dynamic = "force-dynamic";
 
 type HukamnamaLine = {
   line: {
@@ -38,7 +43,7 @@ type HukamnamaResponse = {
 async function getHukamnama(): Promise<HukamnamaResponse | null> {
   try {
     const res = await fetch("https://api.gurbaninow.com/v2/hukamnama/today", {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!res.ok) return null;
     const data: HukamnamaResponse = await res.json();
