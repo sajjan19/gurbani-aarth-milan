@@ -7,10 +7,16 @@ type Status = "idle" | "sending" | "sent" | "error";
 export default function ContactPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<{ name: string; email: string; message: string } | null>(null);
+  const [sent, setSent] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+  } | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +26,7 @@ export default function ContactPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, message }),
+        body: JSON.stringify({ name, email, phone, message }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -28,7 +34,7 @@ export default function ContactPage() {
         setStatus("error");
         return;
       }
-      setSent({ name, email, message });
+      setSent({ name, email, phone, message });
       setStatus("sent");
     } catch {
       setError("Failed to send message. Please try again.");
@@ -39,6 +45,7 @@ export default function ContactPage() {
   function handleSendAnother() {
     setName("");
     setEmail("");
+    setPhone("");
     setMessage("");
     setStatus("idle");
     setError(null);
@@ -57,6 +64,12 @@ export default function ContactPage() {
             <dd>{sent.name}</dd>
             <dt>Email</dt>
             <dd>{sent.email}</dd>
+            {sent.phone && (
+              <>
+                <dt>Phone</dt>
+                <dd>{sent.phone}</dd>
+              </>
+            )}
             <dt>Message</dt>
             <dd>{sent.message}</dd>
           </dl>
@@ -82,6 +95,19 @@ export default function ContactPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+            />
+          </label>
+          <label className="contact-field">
+            {/* Wrapped together so the flex column treats the label and the
+                "(optional)" note as one row rather than stacking them. */}
+            <span>
+              Phone number <span className="contact-optional">(optional)</span>
+            </span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
             />
           </label>
           <label className="contact-field">

@@ -756,6 +756,17 @@ a {
   color: var(--blue);
 }
 
+/* Matches the prose column width so the image lines up with the text
+   below it, and scales down freely on narrow screens. */
+.about-image {
+  display: block;
+  width: 100%;
+  max-width: 65ch;
+  height: auto;
+  margin: 0 auto 2rem;
+  border-radius: 12px;
+}
+
 .prose {
   display: flex;
   flex-direction: column;
@@ -794,6 +805,11 @@ a {
   gap: 0.35rem;
   font-weight: 600;
   color: var(--blue);
+}
+
+.contact-optional {
+  font-weight: 400;
+  color: #888;
 }
 
 .contact-field input,

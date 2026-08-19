@@ -10,6 +10,13 @@ export default function AboutPage() {
       <h1>About Gurbani Aarth Milan</h1>
       <p className="subtitle">A project by Guru Nanak Institute of Global Studies</p>
 
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/about.png"
+        alt="Hands resting on an open Guru Granth Sahib"
+        className="about-image"
+      />
+
       <div className="prose">
         <p>
           Gurbani Aarth Milan is a search tool for the Guru Granth Sahib. Rather than
