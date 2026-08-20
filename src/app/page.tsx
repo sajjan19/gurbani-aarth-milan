@@ -441,6 +441,15 @@ export default function Home() {
               placeholder={MODE_PLACEHOLDERS[mode]}
               className="search-input"
               autoComplete="off"
+              // Case is meaningful here -- the transliteration reads "t" as
+              // ਤ but "T" as ਟ, "n" as ਨ but "N" as ਣ -- so a phone
+              // capitalising the first letter silently changes the word
+              // being searched for ("nanak" becomes ਣਨਕ rather than ਨਾਨਕ).
+              // Autocorrect does the same kind of damage to romanised
+              // Punjabi, which it reads as misspelt English.
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
             />
             <button
               ref={keyboardToggleRef}
