@@ -81,14 +81,13 @@ function main() {
   let translationCount = 0;
   let skipped = 0;
 
-  const importAll = db.transaction(() => {
-    for (const file of files) {
-      const wb = XLSX.readFile(path.join(SOURCE_DIR, file));
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, {
-        defval: null,
-      });
-
+  // One transaction per spreadsheet rather than one around the whole
+  // import. A single transaction spanning all 29 files forces SQLite to
+  // hold every pending FTS index entry in memory until the end, which
+  // pushed peak usage past 500MB -- more than a small deploy instance has.
+  // Committing per file lets that memory be reclaimed as it goes.
+  const importFile = db.transaction((rows: Record<string, unknown>[]) => {
+    {
       for (const row of rows) {
         const page = row["Page"];
         const verse = row["Verse"];
@@ -131,7 +130,19 @@ function main() {
     }
   });
 
-  importAll();
+  for (const file of files) {
+    const wb = XLSX.readFile(path.join(SOURCE_DIR, file));
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet, {
+      defval: null,
+    });
+
+    importFile(rows);
+
+    // Fold this file's writes into the database before moving on, so the
+    // write-ahead log doesn't grow to the size of the database itself.
+    db.pragma("wal_checkpoint(TRUNCATE)");
+  }
 
   console.log(`Imported ${verseCount} verses, ${translationCount} translations from ${files.length} files.`);
   if (skipped) console.log(`Skipped ${skipped} rows with missing page/verse/phrase.`);
