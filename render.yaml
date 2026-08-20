@@ -6,6 +6,13 @@ services:
     runtime: node
     plan: free
 
+    # Redeploy on every push to main. This is Render's default, but stated
+    # here so it stays true and is visible without digging in the dashboard.
+    # Note that each deploy re-runs the full build below, including
+    # regenerating the database, so a push takes several minutes to go live.
+    branch: main
+    autoDeploy: true
+
     # The database is not in the repo -- it is 443MB, well over what git
     # should carry -- so it gets rebuilt from the committed spreadsheets in
     # data/source-xlsx on every deploy. Files written during the build stay
