@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import FilterFab from "@/components/FilterFab";
 
 function KeyboardIcon() {
   return (
@@ -533,6 +534,15 @@ export default function Home() {
           ({selectedIds.size} of {researchers.length} selected)
         </span>
       </button>
+
+      {/* Only worth floating once there are results to filter. */}
+      {results !== null && results.length > 0 && (
+        <FilterFab
+          selectedCount={selectedIds.size}
+          totalCount={researchers.length}
+          onClick={() => setShowFilterModal(true)}
+        />
+      )}
 
       {showFilterModal && (
         <div className="modal-overlay" onClick={() => setShowFilterModal(false)}>

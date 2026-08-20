@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Researcher, VerseResult } from "@/lib/search";
+import FilterFab from "@/components/FilterFab";
 
 export default function HukamnamaResults({
   verses,
@@ -68,6 +69,14 @@ export default function HukamnamaResults({
           ({selectedIds.size} of {researchers.length} selected)
         </span>
       </button>
+
+      {verses.length > 0 && (
+        <FilterFab
+          selectedCount={selectedIds.size}
+          totalCount={researchers.length}
+          onClick={() => setShowFilterModal(true)}
+        />
+      )}
 
       {showFilterModal && (
         <div className="modal-overlay" onClick={() => setShowFilterModal(false)}>

@@ -1,35 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useScrolledDown } from "./useScrolledDown";
 
-const SHOW_AFTER_PX = 400;
-// Hidden within this many px of the very bottom of the page, since the
-// page-number search results end with their own "return to top" button
-// there (see the page-nav-bottom middle button) -- no need for this
-// floating one to sit on top of it.
-const HIDE_NEAR_BOTTOM_PX = 120;
-
-// Appears once the page has scrolled past SHOW_AFTER_PX, since search
-// results can run to dozens of verses -- lets the user jump back to the
-// search bar/filters without hand-scrolling all the way up.
+// Appears once the page has scrolled down a way, since search results can
+// run to dozens of verses -- lets the user jump back to the search
+// bar/filters without hand-scrolling all the way up.
 export default function ScrollToTopButton() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    function handleScroll() {
-      const pastThreshold = window.scrollY > SHOW_AFTER_PX;
-      const distanceFromBottom =
-        document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-      setVisible(pastThreshold && distanceFromBottom > HIDE_NEAR_BOTTOM_PX);
-    }
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, []);
+  const visible = useScrolledDown();
 
   return (
     // No aria-hidden/tabIndex toggling here: the CSS `visibility: hidden`
