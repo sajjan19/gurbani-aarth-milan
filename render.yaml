@@ -1,0 +1,29 @@
+# Render Blueprint. Connect this repo on render.com and it will pick this
+# up automatically; the only thing to set by hand is RESEND_API_KEY.
+services:
+  - type: web
+    name: gurbani-aarth-milan
+    runtime: node
+    plan: starter
+
+    # The database is not in the repo -- it is 443MB, well over what git
+    # should carry -- so it gets rebuilt from the committed spreadsheets in
+    # data/source-xlsx on every deploy. Files written during the build stay
+    # on the instance, so the app finds data/gurbani.db at runtime.
+    #
+    # --include=dev is required: tsx and xlsx (needed by the import) and
+    # typescript (needed by the build) are devDependencies, and Render sets
+    # NODE_ENV=production, which would otherwise skip them.
+    buildCommand: npm ci --include=dev && npm run import && npm run build
+    startCommand: npm start
+
+    envVars:
+      # better-sqlite3 ships prebuilt binaries per Node major; pinning
+      # avoids a surprise recompile (or failure) when Render's default moves.
+      - key: NODE_VERSION
+        value: "22"
+      # Set this in the Render dashboard -- it is a secret and is
+      # deliberately not stored in the repo. Without it the contact form
+      # returns a "not configured" error; the rest of the site is fine.
+      - key: RESEND_API_KEY
+        sync: false

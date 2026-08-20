@@ -136,6 +136,12 @@ function main() {
   console.log(`Imported ${verseCount} verses, ${translationCount} translations from ${files.length} files.`);
   if (skipped) console.log(`Skipped ${skipped} rows with missing page/verse/phrase.`);
 
+  // Fold the write-ahead log back into the database file and drop it.
+  // close() normally checkpoints on its own, but only when nothing else
+  // holds the database open -- and an import run while the dev server is
+  // up leaves a WAL as large as the database itself sitting beside it.
+  // Doing it explicitly keeps the deployed artifact to a single file.
+  db.pragma("wal_checkpoint(TRUNCATE)");
   db.close();
 }
 
