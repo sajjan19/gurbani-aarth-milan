@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/", label: "Search" },
   { href: "/hukamnama", label: "Hukamnama" },
   { href: "/about", label: "About" },
+  { href: "/feedback", label: "Feedback" },
   { href: "/contact", label: "Contact" },
 ];
 

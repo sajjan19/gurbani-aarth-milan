@@ -812,8 +812,51 @@ a {
   color: #888;
 }
 
+/* Thumbnails of attached screenshots, each with its own remove control. */
+.photo-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  list-style: none;
+}
+
+.photo-previews li {
+  position: relative;
+}
+
+.photo-previews img {
+  display: block;
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.photo-previews button {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--blue-dark);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photo-previews button:hover {
+  background: var(--orange-dark);
+}
+
 .contact-field input,
-.contact-field textarea {
+.contact-field textarea,
+.contact-field select {
   font: inherit;
   font-weight: normal;
   color: var(--foreground);
@@ -825,7 +868,8 @@ a {
 }
 
 .contact-field input:focus,
-.contact-field textarea:focus {
+.contact-field textarea:focus,
+.contact-field select:focus {
   outline: none;
   border-color: var(--orange);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 25%, transparent);
