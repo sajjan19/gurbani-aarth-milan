@@ -3,6 +3,15 @@ import { suggestGurmukhi } from "@/lib/gurmukhiSuggest";
 import { searchByInitials, searchByPage, searchByPhrase } from "@/lib/search";
 import { transliterateLetters } from "@/lib/transliterate";
 
+// The Gurmukhi keyboard offers Gurmukhi numerals and the Punjabi interface
+// writes Ang numbers with them, so a page search can legitimately arrive as
+// "\u0a6d\u0a69\u0a6d" rather than "737". Folded back to ASCII before parsing.
+function foldGurmukhiDigits(text: string): string {
+  return text.replace(/[\u0a66-\u0a6f]/g, (d) =>
+    String(d.charCodeAt(0) - 0x0a66)
+  );
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode");
@@ -52,7 +61,7 @@ export async function GET(request: NextRequest) {
       });
     }
     case "page": {
-      const page = parseInt(q, 10);
+      const page = parseInt(foldGurmukhiDigits(q), 10);
       if (!Number.isFinite(page) || page < 1) {
         return NextResponse.json({ error: "Page must be a positive number" }, { status: 400 });
       }

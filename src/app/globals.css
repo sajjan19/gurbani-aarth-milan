@@ -123,6 +123,50 @@ a {
   background: var(--blue-light);
 }
 
+/* Segmented control rather than a dropdown: both languages stay readable at
+   a glance, so someone who can't read the current one can still find theirs. */
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--blue);
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lang-option {
+  padding: 0.35rem 0.85rem;
+  border: none;
+  background: none;
+  color: var(--blue);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lang-option:hover {
+  background: var(--blue-light);
+}
+
+.lang-option.active {
+  background: var(--blue);
+  color: #fff;
+}
+
+/* The Punjabi side carries the site's orange, matching the Gurmukhi title
+   treatment, so the two languages read as distinct at a glance rather than
+   as one highlighted half of a plain grey control. */
+.lang-option-pa {
+  color: var(--orange);
+}
+
+.lang-option-pa.active {
+  background: var(--orange);
+  color: #fff;
+}
+
 .page {
   width: 100%;
   max-width: 860px;
@@ -1021,12 +1065,25 @@ a {
 /* The four inline nav links plus the logo stop fitting on one row a little
    above 800px, so the menu collapses behind a hamburger from there down. */
 @media (max-width: 820px) {
+  /* The language toggle adds a third item to the bar, which was enough to
+     wrap the hamburger onto its own row. Nothing wraps here; the logo gives
+     up width instead, since it's the only flexible item. */
   .site-header {
     padding: 1rem 1.25rem 0;
+    flex-wrap: nowrap;
+    gap: 0.6rem;
+  }
+
+  .site-brand {
+    min-width: 0;
+    flex-shrink: 1;
   }
 
   .site-logo-full {
     height: 56px;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: left;
   }
 
   /* Sits above the overlay so the same button turns into the close (X)
@@ -1039,6 +1096,36 @@ a {
 
   .site-nav {
     display: none;
+  }
+
+  /* Lifted alongside the hamburger so the language can still be switched
+     while the menu overlay is covering the page. */
+  .lang-toggle {
+    position: relative;
+    z-index: 210;
+    margin-left: auto;
+  }
+
+  .lang-option {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Narrow phones: the logo, toggle and hamburger only fit together once the
+   logo and the toggle both give up a little more. */
+@media (max-width: 430px) {
+  .site-header {
+    padding: 0.75rem 0.9rem 0;
+  }
+
+  .site-logo-full {
+    height: 44px;
+  }
+
+  .lang-option {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.8rem;
   }
 
   /* Full-screen takeover rather than pushing the page down. The links are

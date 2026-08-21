@@ -5,15 +5,8 @@ export const metadata: Metadata = {
   title: "Feedback | Gurbani Aarth Milan",
 };
 
+// The heading moved into the form component so it can follow the reader's
+// language choice; this shell stays a server component to keep the metadata.
 export default function FeedbackPage() {
-  return (
-    <main className="page">
-      <h1>Feedback</h1>
-      <p className="subtitle">
-        Help us improve Gurbani Aarth Milan — tell us what you found.
-      </p>
-
-      <FeedbackForm />
-    </main>
-  );
+  return <FeedbackForm />;
 }

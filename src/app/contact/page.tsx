@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
 export default function ContactPage() {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,14 +32,14 @@ export default function ContactPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to send message. Please try again.");
+        setError(data.error ?? t.contact.failed);
         setStatus("error");
         return;
       }
       setSent({ name, email, phone, message });
       setStatus("sent");
     } catch {
-      setError("Failed to send message. Please try again.");
+      setError(t.contact.failed);
       setStatus("error");
     }
   }
@@ -54,33 +56,33 @@ export default function ContactPage() {
 
   return (
     <main className="page">
-      <h1>Contact Us</h1>
+      <h1>{t.contact.title}</h1>
 
       {status === "sent" && sent ? (
         <div className="contact-confirmation">
-          <p className="contact-confirmation-title">Thanks, {sent.name} — your message is on its way.</p>
+          <p className="contact-confirmation-title">{t.contact.thanks(sent.name)}</p>
           <dl className="contact-confirmation-recap">
-            <dt>Name</dt>
+            <dt>{t.contact.recapName}</dt>
             <dd>{sent.name}</dd>
-            <dt>Email</dt>
+            <dt>{t.contact.recapEmail}</dt>
             <dd>{sent.email}</dd>
             {sent.phone && (
               <>
-                <dt>Phone</dt>
+                <dt>{t.contact.recapPhone}</dt>
                 <dd>{sent.phone}</dd>
               </>
             )}
-            <dt>Message</dt>
+            <dt>{t.contact.recapMessage}</dt>
             <dd>{sent.message}</dd>
           </dl>
           <button type="button" className="contact-submit" onClick={handleSendAnother}>
-            Send another message
+            {t.contact.sendAnother}
           </button>
         </div>
       ) : (
         <form className="contact-form" onSubmit={handleSubmit}>
           <label className="contact-field">
-            Name
+            {t.contact.name}
             <input
               type="text"
               value={name}
@@ -89,7 +91,7 @@ export default function ContactPage() {
             />
           </label>
           <label className="contact-field">
-            Your email
+            {t.contact.email}
             <input
               type="email"
               value={email}
@@ -101,7 +103,7 @@ export default function ContactPage() {
             {/* Wrapped together so the flex column treats the label and the
                 "(optional)" note as one row rather than stacking them. */}
             <span>
-              Phone number <span className="contact-optional">(optional)</span>
+              {t.contact.phone} <span className="contact-optional">{t.contact.optional}</span>
             </span>
             <input
               type="tel"
@@ -111,7 +113,7 @@ export default function ContactPage() {
             />
           </label>
           <label className="contact-field">
-            Message
+            {t.contact.message}
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -121,7 +123,7 @@ export default function ContactPage() {
           </label>
           {error && <p className="error">{error}</p>}
           <button type="submit" className="contact-submit" disabled={status === "sending"}>
-            {status === "sending" ? "Sending…" : "Send Message"}
+            {status === "sending" ? t.contact.sending : t.contact.send}
           </button>
         </form>
       )}

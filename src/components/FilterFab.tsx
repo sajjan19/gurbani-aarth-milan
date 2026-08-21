@@ -1,6 +1,7 @@
 "use client";
 
 import { useScrolledDown } from "./useScrolledDown";
+import { useLanguage } from "./LanguageProvider";
 
 // Floating researcher-filter button, stacked directly above the
 // scroll-to-top control. Once you are deep into a long list of results the
@@ -15,6 +16,7 @@ export default function FilterFab({
   totalCount: number;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   const visible = useScrolledDown();
   // A count is only worth showing when a filter is actually narrowing
   // things -- "15 of 15" on every screen is just noise.
@@ -25,10 +27,10 @@ export default function FilterFab({
       type="button"
       className={visible ? "filter-fab visible" : "filter-fab"}
       onClick={onClick}
-      aria-label={`Filter by researcher (${selectedCount} of ${totalCount} selected)`}
-      title={`Filter by researcher (${selectedCount} of ${totalCount} selected)`}
+      aria-label={`${t.filters.trigger} ${t.filters.selectedCount(selectedCount, totalCount)}`}
+      title={`${t.filters.trigger} ${t.filters.selectedCount(selectedCount, totalCount)}`}
     >
-      Researchers
+      {t.filters.researchers}
       {filtering && <span className="filter-fab-count">{selectedCount}</span>}
     </button>
   );

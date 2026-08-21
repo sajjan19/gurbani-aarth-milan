@@ -3,14 +3,28 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Researcher, VerseResult } from "@/lib/search";
 import FilterFab from "@/components/FilterFab";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function HukamnamaResults({
   verses,
   researchers,
+  loaded,
+  gregorianDate,
+  nanakshahiDate,
+  pageNo,
+  writer,
+  raag,
 }: {
   verses: VerseResult[];
   researchers: Researcher[];
+  loaded: boolean;
+  gregorianDate: string;
+  nanakshahiDate: string;
+  pageNo: number;
+  writer: string;
+  raag: string;
 }) {
+  const { t, lang, n } = useLanguage();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(
     () => new Set(researchers.map((r) => r.id))
   );
@@ -61,12 +75,34 @@ export default function HukamnamaResults({
     });
   }
 
+  // The upstream API publishes the Nanakshahi date already in Gurmukhi, so
+  // Punjabi readers get a real Nanakshahi date instead of a transliterated
+  // Gregorian one. Falls back if the API omits it.
+  const dateLine = lang === "pa" && nanakshahiDate ? nanakshahiDate : gregorianDate;
+
+  if (!loaded) {
+    return (
+      <main className="page">
+        <h1>{t.hukamnama.title}</h1>
+        <p className="error">{t.hukamnama.loadError}</p>
+      </main>
+    );
+  }
+
   return (
-    <>
+    <main className="page">
+      <h1>{t.hukamnama.title}</h1>
+      <p className="hukamnama-date">{dateLine}</p>
+      <p className="hukamnama-meta">
+        {t.hukamnama.ang} {n(pageNo)}
+        {writer && ` \u00b7 ${writer}`}
+        {raag && ` \u00b7 ${raag}`}
+      </p>
+
       <button type="button" className="filters-trigger" onClick={() => setShowFilterModal(true)}>
-        Filter by researcher{" "}
+        {t.filters.trigger}{" "}
         <span className={selectedIds.size === 0 ? "filter-count filter-count-zero" : "filter-count"}>
-          ({selectedIds.size} of {researchers.length} selected)
+          {t.filters.selectedCount(selectedIds.size, researchers.length)}
         </span>
       </button>
 
@@ -84,23 +120,23 @@ export default function HukamnamaResults({
             className="modal-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Filter by researcher"
+            aria-label={t.filters.trigger}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>Filter by researcher</h2>
+              <h2>{t.filters.trigger}</h2>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setShowFilterModal(false)}
-                aria-label="Close"
+                aria-label={t.filters.close}
               >
                 ✕
               </button>
             </div>
 
             {selectedIds.size === 0 && (
-              <p className="filter-warning">No researchers selected — results won&apos;t show any translations.</p>
+              <p className="filter-warning">{t.filters.noneWarning}</p>
             )}
 
             <div className="filter-toolbar">
@@ -109,7 +145,7 @@ export default function HukamnamaResults({
                 className="filter-toolbar-action"
                 onClick={() => toggleGroup(researchers.map((r) => r.id), true)}
               >
-                Select all
+                {t.filters.selectAll}
               </button>
               <span className="filter-toolbar-divider" aria-hidden="true">
                 ·
@@ -119,19 +155,19 @@ export default function HukamnamaResults({
                 className="filter-toolbar-action"
                 onClick={() => toggleGroup(researchers.map((r) => r.id), false)}
               >
-                Clear all
+                {t.filters.clearAll}
               </button>
             </div>
 
             <div className="filter-groups">
               <fieldset>
-                <legend>Punjabi</legend>
+                <legend>{t.filters.punjabi}</legend>
                 <div className="filter-group-actions">
                   <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), true)}>
-                    All
+                    {t.filters.all}
                   </button>
                   <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), false)}>
-                    None
+                    {t.filters.none}
                   </button>
                 </div>
                 {punjabiResearchers.map((r) => (
@@ -146,13 +182,13 @@ export default function HukamnamaResults({
                 ))}
               </fieldset>
               <fieldset>
-                <legend>English</legend>
+                <legend>{t.filters.english}</legend>
                 <div className="filter-group-actions">
                   <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), true)}>
-                    All
+                    {t.filters.all}
                   </button>
                   <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), false)}>
-                    None
+                    {t.filters.none}
                   </button>
                 </div>
                 {englishResearchers.map((r) => (
@@ -169,7 +205,7 @@ export default function HukamnamaResults({
             </div>
 
             <button type="button" className="modal-done" onClick={() => setShowFilterModal(false)}>
-              Done
+              {t.filters.done}
             </button>
           </div>
         </div>
@@ -177,7 +213,7 @@ export default function HukamnamaResults({
 
       <div className="results">
         {verses.map((v) => {
-          const visibleTranslations = v.translations.filter((t) => selectedIds.has(t.researcherId));
+          const visibleTranslations = v.translations.filter((tr) => selectedIds.has(tr.researcherId));
           const expanded = expandedVerseIds.has(v.id);
           return (
             <article key={v.id} className="verse-card accordion">
@@ -202,9 +238,9 @@ export default function HukamnamaResults({
                     <p className="no-translations">No translations selected for this verse.</p>
                   ) : (
                     <ul className="translation-list">
-                      {visibleTranslations.map((t) => (
-                        <li key={t.researcherId}>
-                          <span className="translation-source">{t.displayName}:</span> {t.text}
+                      {visibleTranslations.map((tr) => (
+                        <li key={tr.researcherId}>
+                          <span className="translation-source">{tr.displayName}:</span> {tr.text}
                         </li>
                       ))}
                     </ul>
@@ -227,6 +263,6 @@ export default function HukamnamaResults({
           </button>
         </div>
       )}
-    </>
+    </main>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { useScrolledDown } from "./useScrolledDown";
+import { useLanguage } from "./LanguageProvider";
 
 // Appears once the page has scrolled down a way, since search results can
 // run to dozens of verses -- lets the user jump back to the search
 // bar/filters without hand-scrolling all the way up.
 export default function ScrollToTopButton() {
+  const { t } = useLanguage();
   const visible = useScrolledDown();
 
   return (
@@ -19,8 +21,8 @@ export default function ScrollToTopButton() {
       type="button"
       className={visible ? "scroll-to-top visible" : "scroll-to-top"}
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      aria-label="Scroll to top"
-      title="Scroll to top"
+      aria-label={t.nav2.scrollToTop}
+      title={t.nav2.scrollToTop}
     >
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path

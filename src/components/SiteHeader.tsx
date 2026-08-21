@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "./LanguageProvider";
+import LanguageToggle from "./LanguageToggle";
+import type { Translation } from "@/lib/i18n";
 
-const NAV_LINKS = [
-  { href: "/", label: "Search" },
-  { href: "/hukamnama", label: "Hukamnama" },
-  { href: "/about", label: "About" },
-  { href: "/feedback", label: "Feedback" },
-  { href: "/contact", label: "Contact" },
+const NAV_LINKS: { href: string; key: keyof Translation["nav"] }[] = [
+  { href: "/", key: "search" },
+  { href: "/hukamnama", key: "hukamnama" },
+  { href: "/about", key: "about" },
+  { href: "/feedback", key: "feedback" },
+  { href: "/contact", key: "contact" },
 ];
 
 function MenuIcon({ open }: { open: boolean }) {
@@ -38,6 +41,7 @@ function MenuIcon({ open }: { open: boolean }) {
 
 export default function SiteHeader() {
   const pathname = usePathname();
+  const { t } = useLanguage();
   // Stores which route the menu was opened on rather than a plain boolean,
   // so any navigation (including back/forward) closes it for free instead
   // of needing an effect to watch the pathname. Clicking the link for the
@@ -85,25 +89,30 @@ export default function SiteHeader() {
         <img src="/logo-full.png" alt="Gurbani Aarth Milan" className="site-logo-full" />
       </Link>
 
+      <nav id="site-nav" ref={navRef} className={menuOpen ? "site-nav open" : "site-nav"}>
+        {NAV_LINKS.map((link) => (
+          <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
+            {t.nav[link.key]}
+          </Link>
+        ))}
+      </nav>
+
+      {/* Deliberately outside the nav so it stays visible on mobile instead of
+          hiding behind the hamburger -- a reader who can't read the English
+          labels shouldn't have to find a menu first to switch language. */}
+      <LanguageToggle />
+
       <button
         ref={toggleRef}
         type="button"
         className="site-nav-toggle"
         onClick={() => setMenuOpen(!menuOpen)}
-        aria-label={menuOpen ? "Close menu" : "Open menu"}
+        aria-label={menuOpen ? t.nav.closeMenu : t.nav.openMenu}
         aria-expanded={menuOpen}
         aria-controls="site-nav"
       >
         <MenuIcon open={menuOpen} />
       </button>
-
-      <nav id="site-nav" ref={navRef} className={menuOpen ? "site-nav open" : "site-nav"}>
-        {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
-            {link.label}
-          </Link>
-        ))}
-      </nav>
     </header>
   );
 }

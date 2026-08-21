@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import SiteHeader from "@/components/SiteHeader";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <SiteHeader />
-        {children}
-        <ScrollToTopButton />
+        <LanguageProvider>
+          <SiteHeader />
+          {children}
+          <ScrollToTopButton />
+        </LanguageProvider>
       </body>
     </html>
   );

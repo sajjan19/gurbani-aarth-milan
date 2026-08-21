@@ -26,6 +26,12 @@ type HukamnamaLine = {
 type HukamnamaResponse = {
   date: {
     gregorian: { month: string; date: number; year: number; day: string };
+    // The API already publishes the Nanakshahi date in Gurmukhi, so Punjabi
+    // readers get a real Nanakshahi date rather than a transliterated
+    // Gregorian one.
+    nanakshahi?: {
+      punjabi?: { month: string; date: string; year: string; day: string };
+    };
   };
   hukamnamainfo: {
     pageno: number;
@@ -81,27 +87,22 @@ export default async function HukamnamaPage() {
       );
     }) ?? [];
 
+  const gregorian = data
+    ? `${data.date.gregorian.day}, ${data.date.gregorian.month} ${data.date.gregorian.date}, ${data.date.gregorian.year}`
+    : "";
+  const pa = data?.date.nanakshahi?.punjabi;
+  const nanakshahi = pa ? `${pa.day}, ${pa.month} ${pa.date}, ${pa.year}` : "";
+
   return (
-    <main className="page">
-      <h1>Daily Hukamnama</h1>
-
-      {!data ? (
-        <p className="error">Could not load today&apos;s Hukamnama right now. Please try again later.</p>
-      ) : (
-        <>
-          <p className="hukamnama-date">
-            {data.date.gregorian.day}, {data.date.gregorian.month} {data.date.gregorian.date},{" "}
-            {data.date.gregorian.year}
-          </p>
-          <p className="hukamnama-meta">
-            Ang {data.hukamnamainfo.pageno}
-            {data.hukamnamainfo.writer && ` · ${data.hukamnamainfo.writer.unicode}`}
-            {data.hukamnamainfo.raag && ` · ${data.hukamnamainfo.raag.unicode}`}
-          </p>
-
-          <HukamnamaResults verses={verses} researchers={researchers} />
-        </>
-      )}
-    </main>
+    <HukamnamaResults
+      verses={verses}
+      researchers={researchers}
+      loaded={data !== null}
+      gregorianDate={gregorian}
+      nanakshahiDate={nanakshahi}
+      pageNo={data?.hukamnamainfo.pageno ?? 0}
+      writer={data?.hukamnamainfo.writer?.unicode ?? ""}
+      raag={data?.hukamnamainfo.raag?.unicode ?? ""}
+    />
   );
 }

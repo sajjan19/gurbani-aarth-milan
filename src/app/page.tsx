@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import FilterFab from "@/components/FilterFab";
+import { useLanguage } from "@/components/LanguageProvider";
 
 function KeyboardIcon() {
   return (
@@ -72,16 +73,23 @@ type VerseResult = {
 
 type Mode = "phrase" | "page" | "initials";
 
-const MODE_LABELS: Record<Mode, string> = {
-  phrase: "Word / Phrase",
-  page: "Page Number",
-  initials: "First Letters",
+const MODES: Mode[] = ["phrase", "page", "initials"];
+
+// Keyed off the mode so the labels and placeholders follow the reader's
+// language along with everything else.
+const MODE_LABEL_KEYS: Record<Mode, "modePhrase" | "modePage" | "modeInitials"> = {
+  phrase: "modePhrase",
+  page: "modePage",
+  initials: "modeInitials",
 };
 
-const MODE_PLACEHOLDERS: Record<Mode, string> = {
-  phrase: "Search a word or phrase in Gurmukhi...",
-  page: "Enter a page (Ang) number, 1-1430",
-  initials: "Type the first letter of each word, e.g. ਸਸਅ (spaces optional)",
+const MODE_PLACEHOLDER_KEYS: Record<
+  Mode,
+  "placeholderPhrase" | "placeholderPage" | "placeholderInitials"
+> = {
+  phrase: "placeholderPhrase",
+  page: "placeholderPage",
+  initials: "placeholderInitials",
 };
 
 type KeyboardKey = { value: string; label: string };
@@ -119,6 +127,13 @@ const KEYBOARD_COLUMNS = 10;
 const KEYBOARD_PADDING =
   (KEYBOARD_COLUMNS - (GURMUKHI_KEYS.length % KEYBOARD_COLUMNS)) % KEYBOARD_COLUMNS;
 
+// The Gurmukhi keyboard offers Gurmukhi numerals and the Punjabi interface
+// writes Ang numbers with them, so a page number can legitimately be typed
+// as "\u0a6d\u0a69\u0a6d". Folded to ASCII before validating.
+function foldGurmukhiDigits(text: string): string {
+  return text.replace(/[\u0a66-\u0a6f]/g, (d) => String(d.charCodeAt(0) - 0x0a66));
+}
+
 // The Guru Granth Sahib has 1430 pages (Angs).
 const MAX_PAGE = 1430;
 
@@ -155,6 +170,7 @@ function highlightMatches(text: string, terms: string[]): React.ReactNode {
 }
 
 export default function Home() {
+  const { t, lang, n } = useLanguage();
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<Mode>("phrase");
@@ -321,10 +337,10 @@ export default function Home() {
       return;
     }
     if (searchMode === "page") {
-      const page = Number(trimmed);
+      const page = Number(foldGurmukhiDigits(trimmed));
       if (!Number.isInteger(page) || page < 1 || page > MAX_PAGE) {
         setResults(null);
-        setError(`Please enter a page number between 1 and ${MAX_PAGE}.`);
+        setError(t.search.pageRangeError);
         setViewedPage(null);
         setSuggestion(null);
         setAlternateQuery(null);
@@ -346,14 +362,16 @@ export default function Home() {
       const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Search failed");
+        setError(data.error ?? t.search.searchFailed);
         setResults(null);
         setViewedPage(null);
         setSuggestion(null);
         setAlternateQuery(null);
       } else {
         setResults(data.results);
-        setViewedPage(searchMode === "page" ? parseInt(trimmed, 10) : null);
+        setViewedPage(
+          searchMode === "page" ? parseInt(foldGurmukhiDigits(trimmed), 10) : null
+        );
         setSuggestion(data.interpretedQuery ?? null);
         setSuggestionExact(data.exact ?? true);
         setAlternateQuery(data.alternateQuery ?? null);
@@ -372,7 +390,7 @@ export default function Home() {
         );
       }
     } catch {
-      setError("Search failed. Please try again.");
+      setError(t.search.searchFailed);
       setViewedPage(null);
       setSuggestion(null);
       setAlternateQuery(null);
@@ -415,19 +433,21 @@ export default function Home() {
     <main className="page">
       <div className="search-hero">
         <div className="page-title">
-          <h1>Gurbani Aarth Milan</h1>
-          <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>
+          <h1>{t.search.title}</h1>
+          {/* The heading is already Gurmukhi in Punjabi mode, so the
+              transliterated pairing underneath would just repeat it. */}
+          {lang !== "pa" && <p className="title-gurmukhi">ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ</p>}
         </div>
 
         <div className="mode-tabs">
-          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
+          {MODES.map((m) => (
             <button
               key={m}
               type="button"
               className={m === mode ? "mode-tab active" : "mode-tab"}
               onClick={() => setMode(m)}
             >
-              {MODE_LABELS[m]}
+              {t.search[MODE_LABEL_KEYS[m]]}
             </button>
           ))}
         </div>
@@ -439,7 +459,7 @@ export default function Home() {
               type="text"
               value={query}
               onChange={(e) => setQueryAndSync(e.target.value)}
-              placeholder={MODE_PLACEHOLDERS[mode]}
+              placeholder={t.search[MODE_PLACEHOLDER_KEYS[mode]]}
               className="search-input"
               autoComplete="off"
               // Case is meaningful here -- the transliteration reads "t" as
@@ -457,8 +477,8 @@ export default function Home() {
               type="button"
               className={showKeyboard ? "keyboard-toggle active" : "keyboard-toggle"}
               onClick={() => setShowKeyboard((v) => !v)}
-              aria-label="Toggle Gurmukhi keyboard"
-              title="Toggle Gurmukhi keyboard"
+              aria-label={t.search.toggleKeyboard}
+              title={t.search.toggleKeyboard}
             >
               <KeyboardIcon />
             </button>
@@ -466,8 +486,8 @@ export default function Home() {
               type="submit"
               className="search-button"
               disabled={loading}
-              aria-label="Search"
-              title="Search"
+              aria-label={t.search.searchAction}
+              title={t.search.searchAction}
             >
               <SearchIcon />
             </button>
@@ -476,10 +496,11 @@ export default function Home() {
 
         {suggestion && (
           <p className="search-suggestion">
-            Showing results for <span className="search-suggestion-gurmukhi">{suggestion}</span>
+            {t.search.showingResultsFor}{" "}
+            <span className="search-suggestion-gurmukhi">{suggestion}</span>
             {!suggestionExact && alternateQuery && (
               <>
-                {" — Did you mean "}
+                {` — ${t.search.didYouMean} `}
                 <button
                   type="button"
                   className="search-suggestion-alt"
@@ -501,10 +522,10 @@ export default function Home() {
         <div className="gurmukhi-keyboard" ref={keyboardPanelRef}>
           <div className="keyboard-controls">
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
-              ⌫ Backspace
+              ⌫ {t.keyboard.backspace}
             </button>
             <button type="button" className="keyboard-key special" onClick={() => setQueryAndSync("")}>
-              Clear
+              {t.keyboard.clear}
             </button>
           </div>
           <div className="keyboard-grid" style={{ gridTemplateColumns: `repeat(${KEYBOARD_COLUMNS}, 1fr)` }}>
@@ -523,15 +544,15 @@ export default function Home() {
             ))}
           </div>
           <button type="button" className="keyboard-key wide" onClick={() => insertAtCursor(" ")}>
-            Space
+            {t.keyboard.space}
           </button>
         </div>
       )}
 
       <button type="button" className="filters-trigger" onClick={() => setShowFilterModal(true)}>
-        Filter by researcher{" "}
+        {t.filters.trigger}{" "}
         <span className={selectedIds.size === 0 ? "filter-count filter-count-zero" : "filter-count"}>
-          ({selectedIds.size} of {researchers.length} selected)
+          {t.filters.selectedCount(selectedIds.size, researchers.length)}
         </span>
       </button>
 
@@ -550,23 +571,23 @@ export default function Home() {
             className="modal-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Filter by researcher"
+            aria-label={t.filters.trigger}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>Filter by researcher</h2>
+              <h2>{t.filters.trigger}</h2>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setShowFilterModal(false)}
-                aria-label="Close"
+                aria-label={t.filters.close}
               >
                 ✕
               </button>
             </div>
 
             {selectedIds.size === 0 && (
-              <p className="filter-warning">No researchers selected — results won&apos;t show any translations.</p>
+              <p className="filter-warning">{t.filters.noneWarning}</p>
             )}
 
             <div className="filter-toolbar">
@@ -575,7 +596,7 @@ export default function Home() {
                 className="filter-toolbar-action"
                 onClick={() => toggleGroup(researchers.map((r) => r.id), true)}
               >
-                Select all
+                {t.filters.selectAll}
               </button>
               <span className="filter-toolbar-divider" aria-hidden="true">
                 ·
@@ -585,19 +606,19 @@ export default function Home() {
                 className="filter-toolbar-action"
                 onClick={() => toggleGroup(researchers.map((r) => r.id), false)}
               >
-                Clear all
+                {t.filters.clearAll}
               </button>
             </div>
 
             <div className="filter-groups">
               <fieldset>
-                <legend>Punjabi</legend>
+                <legend>{t.filters.punjabi}</legend>
                 <div className="filter-group-actions">
                   <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), true)}>
-                    All
+                    {t.filters.all}
                   </button>
                   <button type="button" onClick={() => toggleGroup(punjabiResearchers.map((r) => r.id), false)}>
-                    None
+                    {t.filters.none}
                   </button>
                 </div>
                 {punjabiResearchers.map((r) => (
@@ -612,13 +633,13 @@ export default function Home() {
                 ))}
               </fieldset>
               <fieldset>
-                <legend>English</legend>
+                <legend>{t.filters.english}</legend>
                 <div className="filter-group-actions">
                   <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), true)}>
-                    All
+                    {t.filters.all}
                   </button>
                   <button type="button" onClick={() => toggleGroup(englishResearchers.map((r) => r.id), false)}>
-                    None
+                    {t.filters.none}
                   </button>
                 </div>
                 {englishResearchers.map((r) => (
@@ -635,7 +656,7 @@ export default function Home() {
             </div>
 
             <button type="button" className="modal-done" onClick={() => setShowFilterModal(false)}>
-              Done
+              {t.filters.done}
             </button>
           </div>
         </div>
@@ -650,23 +671,25 @@ export default function Home() {
             onClick={() => goToPage(viewedPage - 1)}
             disabled={loading || viewedPage <= 1}
           >
-            ← Previous
+            ← {t.nav2.previous}
           </button>
-          <span className="page-nav-current">Page {viewedPage}</span>
+          <span className="page-nav-current">
+            {t.nav2.page} {n(viewedPage)}
+          </span>
           <button
             type="button"
             onClick={() => goToPage(viewedPage + 1)}
             disabled={loading || viewedPage >= MAX_PAGE}
           >
-            Next →
+            {t.nav2.next} →
           </button>
         </div>
       )}
 
       <div className="results">
-        {results !== null && results.length === 0 && !loading && <p>No matches found.</p>}
+        {results !== null && results.length === 0 && !loading && <p>{t.search.noMatches}</p>}
         {results?.map((v) => {
-          const visibleTranslations = v.translations.filter((t) => selectedIds.has(t.researcherId));
+          const visibleTranslations = v.translations.filter((tr) => selectedIds.has(tr.researcherId));
           const expanded = expandedVerseIds.has(v.id);
           return (
             <article key={v.id} className="verse-card accordion">
@@ -679,7 +702,7 @@ export default function Home() {
               >
                 <span className="verse-toggle-text">
                   <span className="verse-meta">
-                    Page {v.page}, Verse {v.verse}
+                    {t.nav2.page} {n(v.page)}, {t.nav2.verse} {n(v.verse)}
                   </span>
                   <span className="verse-phrase">{highlightMatches(v.phrase, highlightTerms)}</span>
                 </span>
@@ -691,12 +714,12 @@ export default function Home() {
               {expanded && (
                 <div id={`verse-translations-${v.id}`} className="verse-translations">
                   {visibleTranslations.length === 0 ? (
-                    <p className="no-translations">No translations selected for this verse.</p>
+                    <p className="no-translations">{t.filters.noTranslations}</p>
                   ) : (
                     <ul className="translation-list">
-                      {visibleTranslations.map((t) => (
-                        <li key={t.researcherId}>
-                          <span className="translation-source">{t.displayName}:</span> {t.text}
+                      {visibleTranslations.map((tr) => (
+                        <li key={tr.researcherId}>
+                          <span className="translation-source">{tr.displayName}:</span> {tr.text}
                         </li>
                       ))}
                     </ul>
@@ -741,7 +764,7 @@ export default function Home() {
             className="page-nav-top"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            ↑ Return to top
+            ↑ {t.nav2.returnToTop}
           </button>
         </div>
       )}
