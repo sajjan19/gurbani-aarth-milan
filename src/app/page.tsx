@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import FilterFab from "@/components/FilterFab";
 import { useLanguage } from "@/components/LanguageProvider";
+import { applyTypedInput } from "@/lib/romanInput";
 
 function KeyboardIcon() {
   return (
@@ -175,6 +176,12 @@ export default function Home() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<Mode>("phrase");
   const [query, setQuery] = useState("");
+  // The roman letters behind what the box shows, when the reader is typing
+  // Gurmukhi on a Latin keyboard. Kept because the search API guesses much
+  // better from the letters than from their literal reading -- "nanak"
+  // finds ਨਾਨਕ, where the ਨਨਕ in the box would find almost nothing. When
+  // nothing is being transliterated this just tracks the box.
+  const [romanSource, setRomanSource] = useState("");
   const [results, setResults] = useState<VerseResult[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -293,13 +300,50 @@ export default function Home() {
     }
   }
 
+  // Typing produces Gurmukhi only once the reader has asked for Punjabi --
+  // in English the box stays roman, as it always was. Page numbers are
+  // exempt in either language: digits are digits.
+  const typingGurmukhi = lang === "pa" && mode !== "page";
+
+  // Sets the box directly, with the text as its own typed source: used by
+  // the on-screen keyboard, Clear, and picking the alternate reading, all
+  // of which supply Gurmukhi rather than letters to convert.
+  function setQueryDirect(next: string) {
+    setRomanSource(next);
+    setQueryAndSync(next);
+  }
+
+  function handleSearchInput(nextValue: string) {
+    if (!typingGurmukhi) {
+      setQueryDirect(nextValue);
+      return;
+    }
+    const next = applyTypedInput({ roman: romanSource, display: query }, nextValue, mode);
+    setRomanSource(next.roman);
+    setQueryAndSync(next.display);
+
+    // The box now has to show the reading rather than the keystroke. When
+    // the reading is unchanged -- the "a" of "ka" adds no glyph of its own
+    // -- React sees the same value prop and leaves the DOM alone, stranding
+    // the raw letter in the box, so the element is corrected directly.
+    if (next.display !== nextValue) {
+      const cursor = next.display.length;
+      requestAnimationFrame(() => {
+        const input = searchInputRef.current;
+        if (!input) return;
+        input.value = next.display;
+        input.setSelectionRange(cursor, cursor);
+      });
+    }
+  }
+
   function insertAtCursor(char: string) {
     const input = searchInputRef.current;
     const start = input?.selectionStart ?? query.length;
     const end = input?.selectionEnd ?? query.length;
     const cursor = start + char.length;
     const next = query.slice(0, start) + char + query.slice(end);
-    setQueryAndSync(next);
+    setQueryDirect(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -315,7 +359,7 @@ export default function Home() {
       start === end
         ? query.slice(0, Math.max(0, start - 1)) + query.slice(end)
         : query.slice(0, start) + query.slice(end);
-    setQueryAndSync(next);
+    setQueryDirect(next);
     requestAnimationFrame(() => {
       input?.focus();
       input?.setSelectionRange(cursor, cursor);
@@ -402,7 +446,7 @@ export default function Home() {
   function runSearch(e?: React.FormEvent) {
     e?.preventDefault();
     setShowKeyboard(false);
-    performSearch(mode, query);
+    performSearch(mode, typingGurmukhi ? romanSource : query);
   }
 
   function goToPage(page: number) {
@@ -445,7 +489,14 @@ export default function Home() {
               key={m}
               type="button"
               className={m === mode ? "mode-tab active" : "mode-tab"}
-              onClick={() => setMode(m)}
+              // Each mode reads typed letters differently, so the text
+              // already in the box keeps its current reading and becomes
+              // its own source rather than being re-read under the new
+              // mode and changing under the reader.
+              onClick={() => {
+                setMode(m);
+                setRomanSource(query);
+              }}
             >
               {t.search[MODE_LABEL_KEYS[m]]}
             </button>
@@ -458,7 +509,7 @@ export default function Home() {
               ref={searchInputRef}
               type="text"
               value={query}
-              onChange={(e) => setQueryAndSync(e.target.value)}
+              onChange={(e) => handleSearchInput(e.target.value)}
               placeholder={t.search[MODE_PLACEHOLDER_KEYS[mode]]}
               className="search-input"
               autoComplete="off"
@@ -505,7 +556,7 @@ export default function Home() {
                   type="button"
                   className="search-suggestion-alt"
                   onClick={() => {
-                    setQuery(alternateQuery);
+                    setQueryDirect(alternateQuery);
                     performSearch(mode, alternateQuery);
                   }}
                 >
@@ -524,7 +575,7 @@ export default function Home() {
             <button type="button" className="keyboard-key special" onClick={backspaceAtCursor}>
               ⌫ {t.keyboard.backspace}
             </button>
-            <button type="button" className="keyboard-key special" onClick={() => setQueryAndSync("")}>
+            <button type="button" className="keyboard-key special" onClick={() => setQueryDirect("")}>
               {t.keyboard.clear}
             </button>
           </div>
