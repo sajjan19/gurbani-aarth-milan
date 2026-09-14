@@ -8,9 +8,11 @@
   --orange-dark: #c9670f;
   --border: #d8dee6;
   --red: #b00020;
-  /* Reading measure for the text column -- an absolute length so every
-     element shares it regardless of its own font-size. */
-  --measure: 36rem;
+  /* Width of the About page's content column. Deliberately not a `ch`
+     value: ch resolves against each element's own font-size, which had the
+     larger heading claiming a wider column than the prose and list and
+     sitting visibly left of them. Filling the page keeps all four in step. */
+  --measure: 100%;
 }
 
 /* unicode-range restricts this font to actual Gurmukhi characters (U+0A00
@@ -828,6 +830,7 @@ a {
   margin: 2.5rem auto 0.75rem;
   color: var(--blue);
   font-size: 1.4rem;
+  text-align: center;
 }
 
 /* The number is its own column so the citations line up down the left edge
