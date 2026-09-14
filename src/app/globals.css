@@ -8,6 +8,9 @@
   --orange-dark: #c9670f;
   --border: #d8dee6;
   --red: #b00020;
+  /* Reading measure for the text column -- an absolute length so every
+     element shares it regardless of its own font-size. */
+  --measure: 36rem;
 }
 
 /* unicode-range restricts this font to actual Gurmukhi characters (U+0A00
@@ -814,14 +817,14 @@ a {
 .about-image {
   display: block;
   width: 100%;
-  max-width: 65ch;
+  max-width: var(--measure);
   height: auto;
   margin: 0 auto 2rem;
   border-radius: 12px;
 }
 
 .sources-heading {
-  max-width: 65ch;
+  max-width: var(--measure);
   margin: 2.5rem auto 0.75rem;
   color: var(--blue);
   font-size: 1.4rem;
@@ -832,7 +835,7 @@ a {
    these numbers identify a researcher across the whole site, so they're
    rendered as content rather than left to the browser's counter. */
 .source-list {
-  max-width: 65ch;
+  max-width: var(--measure);
   margin: 1.25rem auto 0;
   padding: 0;
   list-style: none;
@@ -876,7 +879,7 @@ a {
   flex-direction: column;
   gap: 1rem;
   line-height: 1.6;
-  max-width: 65ch;
+  max-width: var(--measure);
   margin: 0 auto;
 }
 
