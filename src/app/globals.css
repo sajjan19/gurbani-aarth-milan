@@ -866,6 +866,11 @@ a {
   line-height: 1.6;
 }
 
+/* Titles are italic in the institute's reference list, so they are here. */
+.source-detail cite {
+  font-style: italic;
+}
+
 .prose {
   display: flex;
   flex-direction: column;

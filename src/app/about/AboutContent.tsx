@@ -37,11 +37,11 @@ export default function AboutContent() {
             </span>
             <p className="source-detail">
               <span className="source-name">{source.name}</span>:
-              {/* One entry reads "ਸਟੀਕ:," in the source -- colon then comma
-                  -- so the space is dropped where the line already opens
-                  with its own punctuation. */}
-              {source.citation.startsWith(",") ? "" : " "}
-              {source.citation}
+              {/* `before` carries its own spacing, since one entry reads
+                  "ਸਟੀਕ:," in the source -- colon then comma, no space. */}
+              {source.before ?? " "}
+              <cite>{source.title}</cite>
+              {source.after}
             </p>
           </li>
         ))}
