@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getResearchers, matchVerseByPhrase, type VerseResult } from "@/lib/search";
+import { getResearchers, matchVersesInOrder, type VerseResult } from "@/lib/search";
 import HukamnamaResults from "./HukamnamaResults";
 
 export const metadata: Metadata = {
@@ -44,7 +44,7 @@ type HukamnamaResponse = {
 
 // Public Gurbani API run by GurbaniNow (https://gurbaninow.com), used only
 // to identify which verses make up today's Hukamnama (its own
-// translations aren't used -- see matchVerseByPhrase, which looks each
+// translations aren't used -- see matchVersesInOrder, which looks each
 // line up in our own phrase/translations tables instead).
 async function getHukamnama(): Promise<HukamnamaResponse | null> {
   try {
@@ -64,19 +64,28 @@ export default async function HukamnamaPage() {
   const data = await getHukamnama();
   const researchers = getResearchers();
 
-  // Look each line up on the reported Ang in our own dataset (fuzzy-matched,
-  // since an external source's exact text can differ from ours in trailing
-  // punctuation or the odd word) so the verse shown carries all of our
-  // researchers' translations -- filtering to the selected ones happens
-  // client-side in HukamnamaResults, the same way the homepage does it.
+  // Look the reading up on the reported Ang in our own dataset (fuzzy-
+  // matched, since an external source's exact text can differ from ours in
+  // trailing punctuation or the odd word) so each verse shown carries all
+  // of our researchers' translations -- filtering to the selected ones
+  // happens client-side in HukamnamaResults, the same way the homepage
+  // does it. Matched as a whole sequence rather than line by line, because
+  // an Ang repeats the same heading once per shabad and only the ordering
+  // says which one this reading belongs to.
   // A line with no close match on the page still gets a placeholder card
   // (synthetic negative id, no translations) so the reading isn't missing
   // a line just because our text diverged from the source's for that one.
+  const matched = data
+    ? matchVersesInOrder(
+        data.hukamnamainfo.pageno,
+        data.hukamnama.map(({ line }) => line.gurmukhi.unicode),
+        null
+      )
+    : [];
   const verses: VerseResult[] =
     data?.hukamnama.map(({ line }, i) => {
-      const matched = matchVerseByPhrase(data.hukamnamainfo.pageno, line.gurmukhi.unicode, null);
       return (
-        matched ?? {
+        matched[i] ?? {
           id: -(i + 1),
           page: data.hukamnamainfo.pageno,
           verse: 0,

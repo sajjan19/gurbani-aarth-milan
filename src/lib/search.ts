@@ -238,12 +238,18 @@ export function searchByInitials(initials: string, researcherIds: number[] | nul
   return attachTranslations(rows, researcherIds);
 }
 
-// Punctuation/verse-number marks that can differ between our phrase text
-// and an external source's rendering of the same line (e.g. a trailing
-// danda present in one but not the other) without the underlying line
-// actually being different -- stripped before comparing.
+// The danda can differ between our phrase text and an external source's
+// rendering of the same line without the line actually being different, so
+// it is dropped before comparing.
+//
+// Digits are deliberately kept. They used to be stripped along with it,
+// which quietly erased the one character that tells "ਸੋਰਠਿ ਮਹਲਾ ੯" from
+// "ਸੋਰਠਿ ਮਹਲਾ ੫" -- the number naming which Guru composed the shabad. Both
+// sides reduced to "ਸੋਰਠਿ ਮਹਲਾ", tied at distance zero, and whichever came
+// first on the Ang won, so a Guru Tegh Bahadur reading could be headed as
+// Guru Arjan's.
 function normalizeForPhraseMatch(s: string): string {
-  return s.replace(/[॥੦-੯]/g, "").replace(/\s+/g, " ").trim();
+  return s.replace(/॥/g, "").replace(/\s+/g, " ").trim();
 }
 
 function levenshtein(a: string, b: string): number {
@@ -267,37 +273,77 @@ function levenshtein(a: string, b: string): number {
   return prev[n];
 }
 
-// Finds the verse on `page` whose phrase text most closely matches
-// `targetPhrase` (from an external source, e.g. a Hukamnama API, whose
-// exact text can differ from ours in trailing punctuation or an occasional
-// word-level spelling) and returns it with our own researcher translations
-// attached -- for stitching external Gurbani text back to our own dataset's
-// translations rather than trusting whatever came with it. Returns null if
-// nothing on the page is a close enough match.
-export function matchVerseByPhrase(
+// Matches a run of lines from an external source (a Hukamnama API, whose
+// text can differ from ours in trailing punctuation or the occasional
+// word-level spelling) against the verses on one Ang, and returns each with
+// our own researcher translations attached. Entries are null where nothing
+// on the page is close enough.
+//
+// The lines are matched as a sequence rather than one at a time, because a
+// single Ang repeats the same heading once per shabad -- Ang 631 carries
+// three separate "ਸੋਰਠਿ ਮਹਲਾ ੯" lines. Matched alone, such a line ties
+// against all of them and the first on the page wins, which attaches the
+// translations of the wrong shabad. The reading is contiguous, so the lines
+// that match unambiguously place the ones that don't.
+export function matchVersesInOrder(
   page: number,
-  targetPhrase: string,
+  targetPhrases: string[],
   researcherIds: number[] | null
-): VerseResult | null {
+): (VerseResult | null)[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT id, page, verse, line, phrase FROM verses WHERE page = ?")
+    .prepare("SELECT id, page, verse, line, phrase FROM verses WHERE page = ? ORDER BY verse")
     .all(page) as Omit<VerseResult, "translations">[];
-  if (rows.length === 0) return null;
+  if (rows.length === 0) return targetPhrases.map(() => null);
 
-  const target = normalizeForPhraseMatch(targetPhrase);
-  let best: Omit<VerseResult, "translations"> | null = null;
-  let bestDist = Infinity;
-  for (const row of rows) {
-    const dist = levenshtein(target, normalizeForPhraseMatch(row.phrase));
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = row;
+  // Every verse that ties for the closest match to each line.
+  const tied = targetPhrases.map((phrase) => {
+    const target = normalizeForPhraseMatch(phrase);
+    let bestDist = Infinity;
+    let best: Omit<VerseResult, "translations">[] = [];
+    for (const row of rows) {
+      const dist = levenshtein(target, normalizeForPhraseMatch(row.phrase));
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = [row];
+      } else if (dist === bestDist) {
+        best.push(row);
+      }
     }
+    const maxAllowed = Math.max(3, target.length * 0.35);
+    return bestDist > maxAllowed ? [] : best;
+  });
+
+  // A line matching exactly one verse is taken as settled; those anchor the
+  // rest.
+  const chosen: (Omit<VerseResult, "translations"> | null)[] = tied.map((c) =>
+    c.length === 1 ? c[0] : null
+  );
+
+  for (let i = 0; i < tied.length; i++) {
+    if (chosen[i] || tied[i].length === 0) continue;
+
+    // Nearest settled line in either direction. The reading runs in verse
+    // order, so that line's position implies where this one belongs.
+    let anchor = -1;
+    for (let step = 1; step < tied.length && anchor === -1; step++) {
+      if (chosen[i - step]) anchor = i - step;
+      else if (chosen[i + step]) anchor = i + step;
+    }
+    if (anchor === -1) {
+      chosen[i] = tied[i][0];
+      continue;
+    }
+    const expected = chosen[anchor]!.verse + (i - anchor);
+    chosen[i] = tied[i].reduce((best, row) =>
+      Math.abs(row.verse - expected) < Math.abs(best.verse - expected) ? row : best
+    );
   }
 
-  const maxAllowed = Math.max(3, target.length * 0.35);
-  if (!best || bestDist > maxAllowed) return null;
-
-  return attachTranslations([best], researcherIds)[0];
+  // One query for the whole reading rather than one per line.
+  const found = chosen.filter((row): row is Omit<VerseResult, "translations"> => row !== null);
+  const withTranslations = new Map(
+    attachTranslations(found, researcherIds).map((verse) => [verse.id, verse])
+  );
+  return chosen.map((row) => (row ? withTranslations.get(row.id) ?? null : null));
 }
