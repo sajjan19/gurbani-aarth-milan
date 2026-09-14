@@ -1026,8 +1026,15 @@ a {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 25%, transparent);
 }
 
+/* Centred under the fields. align-self handles it inside the form, which is
+   a flex column; the auto margins do the same in the confirmation panel,
+   which is not a flex container. fit-content keeps the button sized to its
+   label rather than stretching once it is a block. */
 .contact-submit {
-  align-self: flex-start;
+  align-self: center;
+  display: block;
+  width: fit-content;
+  margin-inline: auto;
   padding: 0.65rem 1.5rem;
   border-radius: 8px;
   border: none;
