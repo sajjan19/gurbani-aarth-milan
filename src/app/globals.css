@@ -814,12 +814,13 @@ a {
   font-style: italic;
 }
 
-/* Matches the prose column width so the image lines up with the text
-   below it, and scales down freely on narrow screens. */
+/* Deliberately narrower than the text around it and centred on the page:
+   the citations want the width, the photograph does not. Scales down
+   freely on narrow screens. */
 .about-image {
   display: block;
   width: 100%;
-  max-width: var(--measure);
+  max-width: 36rem;
   height: auto;
   margin: 0 auto 2rem;
   border-radius: 12px;
