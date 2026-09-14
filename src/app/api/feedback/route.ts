@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { ALLOWED_PHOTO_TYPES, MAX_PHOTOS, MAX_PHOTO_BYTES } from "@/lib/feedback";
+import { renderEmail, type EmailField } from "@/lib/emailTemplate";
 
 const FEEDBACK_EMAIL = "mandeeps@gurunanakinstitute.ca";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -72,19 +73,42 @@ export async function POST(request: NextRequest) {
     attachments.push({ filename, content: dataBase64 });
   }
 
-  const contact = [`${name} (${email}${phone ? `, ${phone}` : ""})`, environment]
-    .filter(Boolean)
-    .join("\n");
+  // The browser sends this as "Label: value" lines; split back out so each
+  // gets its own row rather than arriving as one wrapped paragraph.
+  const technical: EmailField[] = environment
+    .split(/\r?\n/)
+    .map((line) => {
+      const at = line.indexOf(":");
+      return at === -1
+        ? { label: "Detail", value: line.trim() }
+        : { label: line.slice(0, at).trim(), value: line.slice(at + 1).trim() };
+    })
+    .filter((f) => f.value);
 
-  const text = [message, "—", contact].filter(Boolean).join("\n\n");
+  const { html, text } = renderEmail({
+    heading: "New feedback from a tester",
+    message,
+    fields: [
+      { label: "From", value: name },
+      { label: "Email", value: email },
+      { label: "Phone", value: phone },
+    ],
+    technical,
+    attachmentNote:
+      attachments.length > 0
+        ? `${attachments.length} screenshot${attachments.length === 1 ? "" : "s"} attached.`
+        : undefined,
+  });
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
     from: "Gurbani Aarth Milan <onboarding@resend.dev>",
     to: FEEDBACK_EMAIL,
+    // Replying in the mail client goes straight back to the tester.
     replyTo: email,
     // Prefixed so tester reports can be filtered apart from contact-form mail.
     subject: `[Feedback] ${name}`,
+    html,
     text,
     ...(attachments.length > 0 ? { attachments } : {}),
   });

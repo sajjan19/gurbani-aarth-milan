@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { renderEmail } from "@/lib/emailTemplate";
 
 const CONTACT_EMAIL = "mandeeps@gurunanakinstitute.ca";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,13 +28,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
   }
 
+  const { html, text } = renderEmail({
+    heading: "New message from the contact form",
+    message,
+    fields: [
+      { label: "From", value: name },
+      { label: "Email", value: email },
+      { label: "Phone", value: phone },
+    ],
+  });
+
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
     from: "Gurbani Aarth Milan <onboarding@resend.dev>",
     to: CONTACT_EMAIL,
+    // Replying in the mail client goes straight back to the sender rather
+    // than to the shared address the site sends from.
     replyTo: email,
     subject: `New message from ${name} via Gurbani Aarth Milan`,
-    text: `${message}\n\n— ${name} (${email}${phone ? `, ${phone}` : ""})`,
+    html,
+    text,
   });
 
   if (error) {
