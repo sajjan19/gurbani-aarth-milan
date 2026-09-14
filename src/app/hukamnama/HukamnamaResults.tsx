@@ -47,6 +47,16 @@ export default function HukamnamaResults({
   const punjabiResearchers = useMemo(() => researchers.filter((r) => r.language === "pa"), [researchers]);
   const englishResearchers = useMemo(() => researchers.filter((r) => r.language === "en"), [researchers]);
 
+  // Listing every selected researcher -- rather than only those who have a
+  // translation for this verse -- keeps the numbering contiguous and makes a
+  // gap in the coverage visible instead of silently absent.
+  const visibleResearchers = useMemo(
+    () => researchers.filter((r) => selectedIds.has(r.id)),
+    [researchers, selectedIds]
+  );
+  const translationsFor = (verse: VerseResult) =>
+    new Map(verse.translations.map((tr) => [tr.researcherId, tr]));
+
   // Researchers are numbered by position so one can be referred to as
   // "number 4" -- the same number in the filter list and on every
   // translation line. Falls back to the bare name before the list has
@@ -224,7 +234,6 @@ export default function HukamnamaResults({
 
       <div className="results">
         {verses.map((v) => {
-          const visibleTranslations = v.translations.filter((tr) => selectedIds.has(tr.researcherId));
           const expanded = expandedVerseIds.has(v.id);
           return (
             <article key={v.id} className="verse-card accordion">
@@ -245,18 +254,33 @@ export default function HukamnamaResults({
 
               {expanded && (
                 <div id={`hukamnama-translations-${v.id}`} className="verse-translations">
-                  {visibleTranslations.length === 0 ? (
-                    <p className="no-translations">No translations selected for this verse.</p>
-                  ) : (
+                  {/* A line the fuzzy match couldn't place in our own text
+                      carries a synthetic negative id and no translations.
+                      Listing every researcher there would blame them for a
+                      gap that is ours, so it says so plainly instead. */}
+                  {v.id < 0 && <p className="no-translations">{t.hukamnama.noMatch}</p>}
+                  {v.id >= 0 && selectedIds.size === 0 && (
+                    <p className="no-translations">{t.filters.noTranslations}</p>
+                  )}
+                  {v.id >= 0 && selectedIds.size > 0 && (
                     <ul className="translation-list">
-                      {visibleTranslations.map((tr) => (
-                        <li key={tr.researcherId}>
-                          <span className="translation-source">
-                            {labelFor(tr.researcherId, tr.displayName)}:
-                          </span>{" "}
-                          {tr.text}
-                        </li>
-                      ))}
+                      {visibleResearchers.map((r) => {
+                        const translation = translationsFor(v).get(r.id);
+                        return (
+                          <li key={r.id}>
+                            <span className="translation-source">
+                              {labelFor(r.id, r.displayName)}:
+                            </span>{" "}
+                            {translation ? (
+                              translation.text
+                            ) : (
+                              <span className="translation-absent">
+                                {t.filters.noTranslationYet}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -273,7 +297,7 @@ export default function HukamnamaResults({
             className="page-nav-top"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            ↑ Return to top
+            ↑ {t.nav2.returnToTop}
           </button>
         </div>
       )}

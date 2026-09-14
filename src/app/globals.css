@@ -800,6 +800,14 @@ a {
   color: var(--blue);
 }
 
+/* Set apart from real translation text so a note about an absent
+   translation can't be mistaken for one at a glance. Muted rather than
+   hidden -- the researcher is still listed, which is the point. */
+.translation-absent {
+  color: #6b7482;
+  font-style: italic;
+}
+
 /* Matches the prose column width so the image lines up with the text
    below it, and scales down freely on narrow screens. */
 .about-image {
