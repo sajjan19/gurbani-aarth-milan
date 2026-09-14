@@ -28,7 +28,10 @@ const RESEARCHERS: { key: string; displayName: string; language: "pa" | "en" }[]
   { key: "ਸਿਧਾਂਤਕ", displayName: "ਸਿਧਾਂਤਕ", language: "pa" },
   { key: "ਅਰਥ ਬੋਧ", displayName: "ਅਰਥ ਬੋਧ", language: "pa" },
   { key: "Gopal S", displayName: "Gopal S", language: "en" },
-  { key: "Manmahoan S", displayName: "Manmahoan S", language: "en" },
+  // The spreadsheet column is misspelt "Manmahoan"; the key has to keep that
+  // spelling to go on matching, but the name shown to readers is the
+  // translator's actual name, Manmohan Singh.
+  { key: "Manmahoan S", displayName: "Manmohan S", language: "en" },
   { key: "Talib", displayName: "Talib", language: "en" },
   { key: "Khalsa", displayName: "Khalsa", language: "en" },
   { key: "Darshan S", displayName: "Darshan S", language: "en" },

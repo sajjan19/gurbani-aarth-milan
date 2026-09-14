@@ -96,6 +96,9 @@ export const translations = {
       p3Before: "This is an early version of the project, and it will keep growing. If you have feedback, corrections, or questions, reach out on the ",
       p3Link: "contact page",
       p3After: ".",
+      sourcesHeading: "The 15 translations",
+      sourcesIntro:
+        "Each translation below is numbered the same way throughout the site, so the number beside a translation in the results tells you which work it comes from. Eight are commentaries in Punjabi and seven are translations into English.",
     },
     contact: {
       title: "Contact Us",
@@ -209,6 +212,9 @@ export const translations = {
       p3Before: "ਇਹ ਪ੍ਰੋਜੈਕਟ ਦਾ ਸ਼ੁਰੂਆਤੀ ਰੂਪ ਹੈ ਅਤੇ ਇਹ ਵਧਦਾ ਰਹੇਗਾ। ਜੇ ਤੁਹਾਡੇ ਕੋਲ ਸੁਝਾਅ, ਸੋਧਾਂ ਜਾਂ ਸਵਾਲ ਹਨ ਤਾਂ ",
       p3Link: "ਸੰਪਰਕ ਪੰਨੇ",
       p3After: " ਰਾਹੀਂ ਦੱਸੋ।",
+      sourcesHeading: "੧੫ ਅਰਥ",
+      sourcesIntro:
+        "ਹੇਠਾਂ ਦਿੱਤੇ ਹਰ ਅਰਥ ਦਾ ਨੰਬਰ ਸਾਰੀ ਸਾਈਟ ਵਿੱਚ ਇੱਕੋ ਜਿਹਾ ਹੈ, ਇਸ ਲਈ ਨਤੀਜਿਆਂ ਵਿੱਚ ਕਿਸੇ ਅਰਥ ਦੇ ਨਾਲ ਦਿੱਤਾ ਨੰਬਰ ਦੱਸਦਾ ਹੈ ਕਿ ਉਹ ਕਿਸ ਗ੍ਰੰਥ ਵਿੱਚੋਂ ਹੈ। ਅੱਠ ਪੰਜਾਬੀ ਵਿੱਚ ਟੀਕੇ ਹਨ ਅਤੇ ਸੱਤ ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ ਅਨੁਵਾਦ ਹਨ।",
     },
     contact: {
       title: "ਸੰਪਰਕ ਕਰੋ",

@@ -811,6 +811,58 @@ a {
   border-radius: 12px;
 }
 
+.sources-heading {
+  max-width: 65ch;
+  margin: 2.5rem auto 0.75rem;
+  color: var(--blue);
+  font-size: 1.4rem;
+}
+
+/* The number is its own column so the citations line up down the left edge
+   however long each one runs. The list's own numbering is suppressed --
+   these numbers identify a researcher across the whole site, so they're
+   rendered as content rather than left to the browser's counter. */
+.source-list {
+  max-width: 65ch;
+  margin: 1.25rem auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source-list li {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.source-number {
+  flex-shrink: 0;
+  min-width: 2ch;
+  color: var(--orange);
+  font-weight: 700;
+  text-align: right;
+}
+
+.source-body {
+  min-width: 0;
+}
+
+.source-name {
+  margin: 0 0 0.15rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.source-detail {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.source-detail cite {
+  font-style: italic;
+}
+
 .prose {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,10 @@
 "use client";
 
 import { useLanguage } from "@/components/LanguageProvider";
+import { RESEARCHER_SOURCES } from "@/lib/researcherSources";
 
 export default function AboutContent() {
-  const { t } = useLanguage();
+  const { t, n } = useLanguage();
 
   return (
     <main className="page">
@@ -22,6 +23,33 @@ export default function AboutContent() {
           {t.about.p3After}
         </p>
       </div>
+
+      <h2 className="sources-heading">{t.about.sourcesHeading}</h2>
+      <p className="prose">{t.about.sourcesIntro}</p>
+
+      {/* The citations themselves aren't translated -- a Punjabi commentary
+          keeps its Gurmukhi title in either language, the way a citation is
+          written anywhere else. */}
+      <ol className="source-list">
+        {RESEARCHER_SOURCES.map((source) => (
+          <li key={source.number}>
+            <span className="source-number" aria-hidden="true">
+              {n(source.number)}.
+            </span>
+            <div className="source-body">
+              <p className="source-name">{source.name}</p>
+              <p className="source-detail">
+                {source.author && <span className="source-author">{source.author}</span>}
+                {source.author && ", "}
+                <cite>{source.title}</cite>
+                {source.volumes && `, ${source.volumes}`}
+                {`, ${source.years}`}
+                {` (${source.publisher})`}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </main>
   );
 }
