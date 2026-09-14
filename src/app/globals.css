@@ -7,6 +7,7 @@
   --orange: #f2841e;
   --orange-dark: #c9670f;
   --border: #d8dee6;
+  --red: #b00020;
 }
 
 /* unicode-range restricts this font to actual Gurmukhi characters (U+0A00
@@ -637,7 +638,7 @@ a {
 }
 
 .error {
-  color: #b00020;
+  color: var(--red);
   margin-bottom: 1rem;
 }
 
@@ -804,7 +805,7 @@ a {
    translation can't be mistaken for one at a glance. Muted rather than
    hidden -- the researcher is still listed, which is the point. */
 .translation-absent {
-  color: #6b7482;
+  color: var(--red);
   font-style: italic;
 }
 

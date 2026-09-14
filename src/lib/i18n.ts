@@ -72,7 +72,7 @@ export const translations = {
       close: "Close",
       researchers: "Researchers",
       noTranslations: "No translations selected for this verse.",
-      noTranslationYet: "No translation has been provided by this researcher so far.",
+      noTranslationYet: "No translation available.",
     },
     nav2: {
       previous: "Previous",
@@ -189,7 +189,7 @@ export const translations = {
       close: "ਬੰਦ ਕਰੋ",
       researchers: "ਖੋਜਕਾਰ",
       noTranslations: "ਇਸ ਤੁਕ ਲਈ ਕੋਈ ਅਰਥ ਨਹੀਂ ਚੁਣਿਆ।",
-      noTranslationYet: "ਇਸ ਖੋਜਕਾਰ ਵੱਲੋਂ ਹੁਣ ਤੱਕ ਕੋਈ ਅਰਥ ਨਹੀਂ ਦਿੱਤਾ ਗਿਆ।",
+      noTranslationYet: "ਕੋਈ ਅਰਥ ਉਪਲਬਧ ਨਹੀਂ।",
     },
     nav2: {
       previous: "ਪਿੱਛੇ",
