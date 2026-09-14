@@ -853,23 +853,17 @@ a {
   text-align: right;
 }
 
-.source-body {
-  min-width: 0;
-}
-
 .source-name {
-  margin: 0 0 0.15rem;
   font-weight: 700;
   color: var(--blue);
 }
 
+/* min-width:0 lets the line wrap inside the flex row rather than forcing
+   the list wider than the page. */
 .source-detail {
+  min-width: 0;
   margin: 0;
   line-height: 1.6;
-}
-
-.source-detail cite {
-  font-style: italic;
 }
 
 .prose {

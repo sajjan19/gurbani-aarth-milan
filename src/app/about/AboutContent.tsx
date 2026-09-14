@@ -25,28 +25,24 @@ export default function AboutContent() {
       </div>
 
       <h2 className="sources-heading">{t.about.sourcesHeading}</h2>
-      <p className="prose">{t.about.sourcesIntro}</p>
 
-      {/* The citations themselves aren't translated -- a Punjabi commentary
-          keeps its Gurmukhi title in either language, the way a citation is
-          written anywhere else. */}
+      {/* Each citation runs as one line, exactly as the institute's own
+          reference list writes it -- so the entries aren't translated, and
+          aren't rearranged into a uniform shape either. */}
       <ol className="source-list">
         {RESEARCHER_SOURCES.map((source) => (
           <li key={source.number}>
             <span className="source-number" aria-hidden="true">
               {n(source.number)}.
             </span>
-            <div className="source-body">
-              <p className="source-name">{source.name}</p>
-              <p className="source-detail">
-                {source.author && <span className="source-author">{source.author}</span>}
-                {source.author && ", "}
-                <cite>{source.title}</cite>
-                {source.volumes && `, ${source.volumes}`}
-                {`, ${source.years}`}
-                {` (${source.publisher})`}
-              </p>
-            </div>
+            <p className="source-detail">
+              <span className="source-name">{source.name}</span>:
+              {/* One entry reads "ਸਟੀਕ:," in the source -- colon then comma
+                  -- so the space is dropped where the line already opens
+                  with its own punctuation. */}
+              {source.citation.startsWith(",") ? "" : " "}
+              {source.citation}
+            </p>
           </li>
         ))}
       </ol>
