@@ -19,25 +19,43 @@
    -U+0A7F), so the browser only ever picks it for Gurmukhi glyphs and
    automatically falls back to the next font in the stack for Latin text --
    even within the same line of mixed English/Gurmukhi content.
-   
-   U+25CC, the dotted circle, is included deliberately. The keyboard shows
-   each vowel sign sitting on one, and a combining mark can only be
-   positioned against a base drawn from the same font: with the circle
-   coming from the fallback face instead, the shaper gave up and left the
-   matra detached beside it rather than on it. The font carries the glyph. */
+
+   These two faces are copies with the dotted-circle glyph (U+25CC) removed
+   from the character map. When a vowel sign has no letter to attach to --
+   easily done on the on-screen keyboard, since Gurmukhi writes sihari to
+   the left of its consonant while Unicode stores it after -- the text
+   shaper draws it on a dotted circle to show it is unattached. That is
+   correct typography but reads as broken text in a search box, and it
+   cannot be turned off from CSS: the shaper only skips it when the font
+   has no such glyph. Real text is unaffected, since an attached vowel sign
+   never triggers it. */
 @font-face {
   font-family: "Nanak Lipi";
-  src: url("/fonts/NanakLipi.otf") format("opentype");
+  src: url("/fonts/NanakLipi-nodotted.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0A00-0A7F, U+25CC;
+  unicode-range: U+0A00-0A7F;
 }
 
 @font-face {
   font-family: "Nanak Lipi";
-  src: url("/fonts/NanakLipiUbhari.otf") format("opentype");
+  src: url("/fonts/NanakLipiUbhari-nodotted.otf") format("opentype");
   font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0A00-0A7F;
+}
+
+/* The unmodified font, used only for the on-screen keyboard's vowel-sign
+   keys. Those deliberately show each sign on a dotted circle, and the two
+   have to come from one font: a combining mark can only be positioned
+   against a base the same face drew, so a circle from the fallback left
+   the sign stranded beside it. */
+@font-face {
+  font-family: "Nanak Lipi Keys";
+  src: url("/fonts/NanakLipi.otf") format("opentype");
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
   unicode-range: U+0A00-0A7F, U+25CC;
@@ -310,6 +328,11 @@ a {
   min-width: 0;
   padding: 0.35rem 0;
   border: none;
+  /* Form controls don't inherit font-family, so without this the search box
+     was the one place on the site not using Nanak Lipi: its Gurmukhi came
+     from whatever the system offered, which is also why an unattached vowel
+     sign picked up a dotted circle there. */
+  font-family: inherit;
   font-size: 1rem;
   background: transparent;
   color: inherit;
@@ -443,7 +466,10 @@ a {
   color: var(--orange);
 }
 
+/* The one place that wants the dotted circle: each vowel-sign key shows
+   its sign sitting on one, so this face still carries the glyph. */
 .keyboard-key-glyph {
+  font-family: "Nanak Lipi Keys", "Nanak Lipi", Arial, Helvetica, sans-serif;
   line-height: 1.2;
 }
 
