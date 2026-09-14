@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Researcher, VerseResult } from "@/lib/search";
 import FilterFab from "@/components/FilterFab";
 import { useLanguage } from "@/components/LanguageProvider";
+import { numberResearchers } from "@/lib/researcherNumbers";
 
 export default function HukamnamaResults({
   verses,
@@ -45,6 +46,16 @@ export default function HukamnamaResults({
 
   const punjabiResearchers = useMemo(() => researchers.filter((r) => r.language === "pa"), [researchers]);
   const englishResearchers = useMemo(() => researchers.filter((r) => r.language === "en"), [researchers]);
+
+  // Researchers are numbered by position so one can be referred to as
+  // "number 4" -- the same number in the filter list and on every
+  // translation line. Falls back to the bare name before the list has
+  // loaded, rather than showing a meaningless 0.
+  const researcherNumbers = useMemo(() => numberResearchers(researchers), [researchers]);
+  function labelFor(id: number, name: string) {
+    const position = researcherNumbers.get(id);
+    return position ? `${n(position)}. ${name}` : name;
+  }
 
   function toggleResearcher(id: number) {
     setSelectedIds((prev) => {
@@ -177,7 +188,7 @@ export default function HukamnamaResults({
                       checked={selectedIds.has(r.id)}
                       onChange={() => toggleResearcher(r.id)}
                     />
-                    {r.displayName}
+                    {labelFor(r.id, r.displayName)}
                   </label>
                 ))}
               </fieldset>
@@ -198,7 +209,7 @@ export default function HukamnamaResults({
                       checked={selectedIds.has(r.id)}
                       onChange={() => toggleResearcher(r.id)}
                     />
-                    {r.displayName}
+                    {labelFor(r.id, r.displayName)}
                   </label>
                 ))}
               </fieldset>
@@ -240,7 +251,10 @@ export default function HukamnamaResults({
                     <ul className="translation-list">
                       {visibleTranslations.map((tr) => (
                         <li key={tr.researcherId}>
-                          <span className="translation-source">{tr.displayName}:</span> {tr.text}
+                          <span className="translation-source">
+                            {labelFor(tr.researcherId, tr.displayName)}:
+                          </span>{" "}
+                          {tr.text}
                         </li>
                       ))}
                     </ul>
