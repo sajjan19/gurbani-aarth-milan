@@ -1177,23 +1177,6 @@ a {
     padding: 0.3rem 0.7rem;
     font-size: 0.875rem;
   }
-}
-
-/* Narrow phones: the logo, toggle and hamburger only fit together once the
-   logo and the toggle both give up a little more. */
-@media (max-width: 430px) {
-  .site-header {
-    padding: 0.75rem 0.9rem 0;
-  }
-
-  .site-logo-full {
-    height: 44px;
-  }
-
-  .lang-option {
-    padding: 0.28rem 0.55rem;
-    font-size: 0.8rem;
-  }
 
   /* Full-screen takeover rather than pushing the page down. The links are
      spread evenly down the viewport (space-evenly) instead of clustered in
@@ -1215,6 +1198,23 @@ a {
   .site-nav.open a {
     padding: 0.9rem 1.5rem;
     font-size: 1.6rem;
+  }
+}
+
+/* Narrow phones: the logo, toggle and hamburger only fit together once the
+   logo and the toggle both give up a little more. */
+@media (max-width: 430px) {
+  .site-header {
+    padding: 0.75rem 0.9rem 0;
+  }
+
+  .site-logo-full {
+    height: 44px;
+  }
+
+  .lang-option {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.8rem;
   }
 }
 
