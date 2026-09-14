@@ -90,11 +90,22 @@ export default function SiteHeader() {
       </Link>
 
       <nav id="site-nav" ref={navRef} className={menuOpen ? "site-nav open" : "site-nav"}>
-        {NAV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
-            {t.nav[link.key]}
-          </Link>
-        ))}
+        {NAV_LINKS.map((link) => {
+          const current = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={current ? "active" : undefined}
+              // Marks the page for screen readers too, rather than leaving
+              // the underline as the only signal.
+              aria-current={current ? "page" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
+              {t.nav[link.key]}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Deliberately outside the nav so it stays visible on mobile instead of

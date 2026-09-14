@@ -18,14 +18,20 @@
 /* unicode-range restricts this font to actual Gurmukhi characters (U+0A00
    -U+0A7F), so the browser only ever picks it for Gurmukhi glyphs and
    automatically falls back to the next font in the stack for Latin text --
-   even within the same line of mixed English/Gurmukhi content. */
+   even within the same line of mixed English/Gurmukhi content.
+   
+   U+25CC, the dotted circle, is included deliberately. The keyboard shows
+   each vowel sign sitting on one, and a combining mark can only be
+   positioned against a base drawn from the same font: with the circle
+   coming from the fallback face instead, the shaper gave up and left the
+   matra detached beside it rather than on it. The font carries the glyph. */
 @font-face {
   font-family: "Nanak Lipi";
   src: url("/fonts/NanakLipi.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0A00-0A7F;
+  unicode-range: U+0A00-0A7F, U+25CC;
 }
 
 @font-face {
@@ -34,7 +40,7 @@
   font-weight: 700;
   font-style: normal;
   font-display: swap;
-  unicode-range: U+0A00-0A7F;
+  unicode-range: U+0A00-0A7F, U+25CC;
 }
 
 html {
@@ -108,6 +114,14 @@ a {
 
 .site-nav a:hover {
   color: var(--orange);
+}
+
+/* Marks the page you're on. The offset keeps the rule clear of the
+   descenders Gurmukhi hangs below the baseline. */
+.site-nav a.active {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
 }
 
 /* Hidden on desktop, where the links sit inline in the header. */
