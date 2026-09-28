@@ -488,7 +488,8 @@ a {
 .filters-trigger {
   display: block;
   max-width: 600px;
-  margin: 0 auto 1.5rem;
+  /* Top margin so the filter doesn't crowd the search bar above it. */
+  margin: 1.25rem auto 1.5rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
