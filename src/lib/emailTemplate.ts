@@ -78,7 +78,7 @@ export function renderEmail(parts: EmailParts): { html: string; text: string } {
             ${escapeHtml(heading)}
           </div>
           <div style="font-size:12px;color:#c7d4ec;margin-top:2px;">
-            Gurbani Aarth Milan
+            Gurbani Arth Milaan
           </div>
         </td>
       </tr>

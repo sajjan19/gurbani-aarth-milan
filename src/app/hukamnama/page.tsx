@@ -3,7 +3,7 @@ import { getResearchers, matchVersesInOrder, type VerseResult } from "@/lib/sear
 import HukamnamaResults from "./HukamnamaResults";
 
 export const metadata: Metadata = {
-  title: "Hukamnama | Gurbani Aarth Milan",
+  title: "Hukamnama | Gurbani Arth Milaan",
 };
 
 // Rendered fresh on every request rather than cached. A timed revalidate

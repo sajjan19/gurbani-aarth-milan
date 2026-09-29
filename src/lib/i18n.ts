@@ -38,7 +38,7 @@ export const translations = {
       language: "Language",
     },
     search: {
-      title: "Gurbani Aarth Milan",
+      title: "Gurbani Arth Milaan",
       modePhrase: "Word / Phrase",
       modePage: "Page Number",
       modeInitials: "First Letters",
@@ -89,10 +89,10 @@ export const translations = {
       noMatch: "No matching translation found in our database for this line.",
     },
     about: {
-      title: "About Gurbani Aarth Milan",
+      title: "About Gurbani Arth Milaan",
       subtitle: "A project by Guru Nanak Institute of Global Studies",
       imageAlt: "Hands resting on an open Guru Granth Sahib",
-      p1: "Gurbani Aarth Milan is a search tool for the Guru Granth Sahib. Rather than showing a single translation for each verse, it brings together interpretations from 15 researchers (8 in Punjabi and 7 in English) side by side, so readers can compare how different scholars have understood the same line.",
+      p1: "Gurbani Arth Milaan is a search tool for the Guru Granth Sahib. Rather than showing a single translation for each verse, it brings together interpretations from 15 researchers (8 in Punjabi and 7 in English) side by side, so readers can compare how different scholars have understood the same line.",
       p2: "You can search by phrase or word (in Gurmukhi or in translation), by page (Ang) number, or by typing just the first letter of each word. Results can be filtered to show only the researchers you're interested in.",
       p3Before: "This is an early version of the project, and it will keep growing. If you have feedback, corrections, or questions, reach out on the ",
       p3Link: "contact page",
@@ -118,7 +118,7 @@ export const translations = {
     },
     feedback: {
       title: "Feedback",
-      subtitle: "Help us improve Gurbani Aarth Milan — tell us what you found.",
+      subtitle: "Help us improve Gurbani Arth Milaan — tell us what you found.",
       name: "Name",
       email: "E-mail",
       phone: "Phone number",
@@ -132,7 +132,7 @@ export const translations = {
       sending: "Sending…",
       thanks: "Thank you — your feedback has been sent.",
       thanksBody:
-        "It goes straight to the team behind Gurbani Aarth Milan. If we need to ask anything further, we'll reply to the email address you gave.",
+        "It goes straight to the team behind Gurbani Arth Milaan. If we need to ask anything further, we'll reply to the email address you gave.",
       sendAnother: "Send more feedback",
       failed: "Failed to send feedback. Please try again.",
       tooMany: (max: number) => `You can attach up to ${max} photos.`,

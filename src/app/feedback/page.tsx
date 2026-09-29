@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import FeedbackForm from "./FeedbackForm";
 
 export const metadata: Metadata = {
-  title: "Feedback | Gurbani Aarth Milan",
+  title: "Feedback | Gurbani Arth Milaan",
 };
 
 // The heading moved into the form component so it can follow the reader's

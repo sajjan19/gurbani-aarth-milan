@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AboutContent from "./AboutContent";
 
 export const metadata: Metadata = {
-  title: "About | Gurbani Aarth Milan",
+  title: "About | Gurbani Arth Milaan",
 };
 
 // The visible copy lives in a client component so it can follow the reader's

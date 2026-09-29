@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
-    from: "Gurbani Aarth Milan <onboarding@resend.dev>",
+    from: "Gurbani Arth Milaan <onboarding@resend.dev>",
     to: CONTACT_EMAIL,
     // Replying in the mail client goes straight back to the sender rather
     // than to the shared address the site sends from.
     replyTo: email,
-    subject: `New message from ${name} via Gurbani Aarth Milan`,
+    subject: `New message from ${name} via Gurbani Arth Milaan`,
     html,
     text,
   });

@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
-    from: "Gurbani Aarth Milan <onboarding@resend.dev>",
+    from: "Gurbani Arth Milaan <onboarding@resend.dev>",
     to: FEEDBACK_EMAIL,
     // Replying in the mail client goes straight back to the tester.
     replyTo: email,

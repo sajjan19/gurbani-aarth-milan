@@ -5,7 +5,7 @@ import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gurbani Aarth Milan",
+  title: "Gurbani Arth Milaan",
   description: "Search the Guru Granth Sahib with translations from multiple researchers",
 };
 
