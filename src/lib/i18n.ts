@@ -118,7 +118,7 @@ export const translations = {
     },
     feedback: {
       title: "Feedback",
-      subtitle: "Help us improve Gurbani Arth Milaan — tell us what you found.",
+      subtitle: "Help us improve Gurbani Arth Milaan",
       name: "Name",
       email: "E-mail",
       phone: "Phone number",
@@ -233,7 +233,7 @@ export const translations = {
     },
     feedback: {
       title: "ਸੁਝਾਅ",
-      subtitle: "ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ ਨੂੰ ਬਿਹਤਰ ਬਣਾਉਣ ਵਿੱਚ ਮਦਦ ਕਰੋ — ਸਾਨੂੰ ਦੱਸੋ ਕੀ ਮਿਲਿਆ।",
+      subtitle: "ਗੁਰਬਾਣੀ ਅਰਥ ਮਿਲਾਨ ਨੂੰ ਬਿਹਤਰ ਬਣਾਉਣ ਵਿੱਚ ਮਦਦ ਕਰੋ।",
       name: "ਨਾਮ",
       email: "ਈ-ਮੇਲ",
       phone: "ਫ਼ੋਨ ਨੰਬਰ",
